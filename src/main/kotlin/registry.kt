@@ -20,7 +20,7 @@ class ControllerRegistry(
         controllers[path] = controller
     }
 
-    fun handleRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String): Any? {
+    fun handleRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String {
         val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
             it[0] to (it.getOrNull(1) ?: "")
         }
@@ -49,7 +49,6 @@ class ControllerRegistry(
                     else -> null
                 }
 
-
                 if (matchedAnnotation != null) {
                     val fullPath = basePath + annotationPath
                     val (pathPattern, groupNames) = createPathPattern(fullPath)
@@ -62,7 +61,7 @@ class ControllerRegistry(
                 }
             }
         }
-        return null
+        return "404"
     }
 
     private fun createPathPattern(path: String): Pair<Pattern, List<String>> {
@@ -112,6 +111,12 @@ private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: Str
         String::class.java -> paramValue
         Int::class.java, java.lang.Integer::class.java -> paramValue?.toInt()
         Boolean::class.java, java.lang.Boolean::class.java -> paramValue?.toBoolean()
+        Float::class.java, java.lang.Float::class.java -> paramValue?.toFloat()
+        Double::class.java, java.lang.Double::class.java -> paramValue?.toDouble()
+        Long::class.java, java.lang.Long::class.java -> paramValue?.toLong()
+        Short::class.java, java.lang.Short::class.java -> paramValue?.toShort()
+        Byte::class.java, java.lang.Byte::class.java -> paramValue?.toByte()
+        Char::class.java, java.lang.Character::class.java -> paramValue?.firstOrNull()
         else -> paramValue
     }
 }
