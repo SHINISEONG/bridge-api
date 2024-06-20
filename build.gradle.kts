@@ -2,8 +2,8 @@ plugins {
     kotlin("jvm") version "1.9.23"
 }
 
-group = "io.practce.hss"
-version = "1.0-SNAPSHOT"
+group = "io.bridge-api.hss"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
