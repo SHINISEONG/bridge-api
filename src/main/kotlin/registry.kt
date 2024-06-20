@@ -50,7 +50,6 @@ class RouterRegistry private constructor(
 
         fun build(): RouterRegistry {
             buildRoutes()
-            println(routeTree)
             return RouterRegistry(
                 objectMapper = objectMapper,
                 routeTree = routeTree
