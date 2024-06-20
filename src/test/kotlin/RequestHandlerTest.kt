@@ -101,16 +101,3 @@ class RequestHandlerTest: StringSpec({
         }
     }
 })
-
-fun main() {
-    val userController = UserController()
-    val productController = ProductController()
-
-    val objectMapper = ObjectMapper().findAndRegisterModules()
-        .registerModules(JacksonCustomSerializeModule())
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    val registry = RouterRegistry.builder()
-        .setSerializer(objectMapper)
-        .registerController("api/v1/users", userController)
-        .build()
-}
