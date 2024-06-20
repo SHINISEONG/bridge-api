@@ -6,21 +6,116 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.valueParameters
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import java.util.regex.Pattern
 
 import kotlin.reflect.jvm.javaType
 
+data class RouteInfo(
+    val function: KFunction<*>,
+    val controller: Any,
+    val method: MethodType
+)
 
-class ControllerRegistry(
-    private val objectMapper: ObjectMapper = jacksonObjectMapper()
+private data class RouteNode(
+    val children: MutableMap<String, RouteNode> = mutableMapOf(),
+    val routeInfoByMethod: MutableMap<MethodType, RouteInfo> = mutableMapOf(),
+    var routeInfo: RouteInfo? = null,
+    val isPathVariable: Boolean = false,
+    val pathVariableName: String? = null
+)
+
+class RouterRegistry private constructor(
+    private val objectMapper: ObjectMapper = jacksonObjectMapper(),
+    private val routeTree: RouteNode = RouteNode()
 ) {
-    private val controllers = mutableMapOf<String, Any>()
-
-    fun registerController(path: String, controller: Any) {
-        controllers[path] = controller
+    companion object {
+        fun builder(): Builder {
+            return Builder()
+        }
     }
 
-    fun handleRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String {
+    class Builder {
+        private var objectMapper: ObjectMapper = jacksonObjectMapper()
+        private val controllers = mutableMapOf<String, Any>()
+        private val routeTree = RouteNode()
+
+        fun setSerializer(objectMapper: ObjectMapper): Builder {
+            this.objectMapper = objectMapper
+            return this
+        }
+
+        fun registerController(path: String, controller: Any): Builder {
+            controllers[path] = controller
+            return this
+        }
+
+        fun build(): RouterRegistry {
+            buildRoutes()
+            println(routeTree)
+            return RouterRegistry(
+                objectMapper = objectMapper,
+                routeTree = routeTree
+            )
+        }
+
+        private fun buildRoutes() {
+            controllers.forEach { (path, controller) ->
+                val controllerClass = controller::class
+                for (function in controllerClass.memberFunctions) {
+                    val matchedAnnotation = when {
+                        function.findAnnotation<Get>() != null -> function.findAnnotation<Get>()
+                        function.findAnnotation<Post>() != null -> function.findAnnotation<Post>()
+                        function.findAnnotation<Patch>() != null -> function.findAnnotation<Patch>()
+                        function.findAnnotation<Delete>() != null -> function.findAnnotation<Delete>()
+                        function.findAnnotation<Put>() != null -> function.findAnnotation<Put>()
+                        else -> null
+                    }
+                    val annotationPath = when (matchedAnnotation) {
+                        is Get -> matchedAnnotation.path.ensureLeadingSlash()
+                        is Post -> matchedAnnotation.path.ensureLeadingSlash()
+                        is Patch -> matchedAnnotation.path.ensureLeadingSlash()
+                        is Delete -> matchedAnnotation.path.ensureLeadingSlash()
+                        is Put -> matchedAnnotation.path.ensureLeadingSlash()
+                        else -> null
+                    }
+
+                    if (matchedAnnotation != null) {
+                        val fullPath = path + annotationPath
+                        val routeInfo = RouteInfo(
+                            function = function,
+                            controller = controller,
+                            method = matchedAnnotation.toMethodType()
+                        )
+                        addRoute(fullPath, routeInfo)
+                    }
+                }
+            }
+        }
+
+        private fun addRoute(path: String, routeInfo: RouteInfo) {
+            val segments = path.split("/").filter { it.isNotEmpty() }
+            tailrec fun add(currentNode: RouteNode, remainingSegments: List<String>) {
+                if (remainingSegments.isEmpty()) {
+                    currentNode.routeInfoByMethod[routeInfo.method] = routeInfo
+                    return
+                }
+
+                val segment = remainingSegments.first()
+
+                val nextNode =
+                    if (segment.startsWith(":"))
+                        currentNode.children.getOrPut("{pathVariable}") {
+                            RouteNode(isPathVariable = true, pathVariableName = segment.substring(1))
+                        }
+                    else
+                        currentNode.children.getOrPut(segment) { RouteNode() }
+
+                add(nextNode, remainingSegments.drop(1))
+            }
+            add(routeTree, segments)
+        }
+    }
+
+    fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String {
         val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
             it[0] to (it.getOrNull(1) ?: "")
         }
@@ -29,51 +124,34 @@ class ControllerRegistry(
             if (key.isNotEmpty() && value != null) key to value else null
         }.toMap()
 
-        for ((basePath, controller) in controllers) {
-            val controllerClass = controller::class
-            for (function in controllerClass.memberFunctions) {
+        val pathSegments = path.split("/").filter { it.isNotEmpty() }
+        val (routeInfo, pathVariables) = findRoute(pathSegments, method)
 
-                val matchedAnnotation = when (method) {
-                    MethodType.GET -> function.findAnnotation<Get>()
-                    MethodType.POST -> function.findAnnotation<Post>()
-                    MethodType.PATCH -> function.findAnnotation<Patch>()
-                    MethodType.DELETE -> function.findAnnotation<Delete>()
-                    MethodType.PUT -> function.findAnnotation<Put>()
-                }
-                val annotationPath = when (matchedAnnotation) {
-                    is Get -> matchedAnnotation.path
-                    is Post -> matchedAnnotation.path
-                    is Patch -> matchedAnnotation.path
-                    is Delete -> matchedAnnotation.path
-                    is Put -> matchedAnnotation.path
-                    else -> null
-                }
+        return if (routeInfo != null) {
+            val result = invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
+            objectMapper.writeValueAsString(result)
+        } else {
+            "404"
+        }
+    }
 
-                if (matchedAnnotation != null) {
-                    val fullPath = basePath + annotationPath
-                    val (pathPattern, groupNames) = createPathPattern(fullPath)
-                    val matcher = pathPattern.matcher(path)
-                    if (matcher.matches()) {
-                        val pathVariables = groupNames.associateWith { matcher.group(it) }
-                        val result = invokeFunction(controller, function, queryParams, jsonStringBody, pathVariables)
-                        return objectMapper.writeValueAsString(result)
-                    }
-                }
+    private fun findRoute(segments: List<String>, method: MethodType): Pair<RouteInfo?, Map<String, String>> {
+        tailrec fun find(currentNode: RouteNode, remainingSegments: List<String>, pathVariables: MutableMap<String, String>): Pair<RouteInfo?, Map<String, String>> {
+            if (remainingSegments.isEmpty()) {
+                return currentNode.routeInfoByMethod[method] to pathVariables
             }
-        }
-        return "404"
-    }
 
-    private fun createPathPattern(path: String): Pair<Pattern, List<String>> {
-        val groupNames = mutableListOf<String>()
-        val regex = path.replace(Regex(":([a-zA-Z][a-zA-Z0-9]*)")) {
-            val groupName = it.groupValues[1]
-            groupNames.add(groupName)
-            "(?<$groupName>[^/]+)"
-        }
-        return Pattern.compile(regex) to groupNames
-    }
+            val segment = remainingSegments.first()
+            val nextNode = currentNode.children[segment] ?: currentNode.children["{pathVariable}"]
+            if (nextNode == null) return null to emptyMap()
 
+            if (nextNode.isPathVariable) pathVariables[nextNode.pathVariableName!!] = segment
+
+            return find(nextNode, remainingSegments.drop(1), pathVariables)
+        }
+
+        return find(routeTree, segments, mutableMapOf())
+    }
 
     private fun invokeFunction(
         controller: Any,
@@ -90,24 +168,30 @@ class ControllerRegistry(
                     }
                     objectMapper.readValue(jsonStringBody, type)
                 }
+
                 param.findAnnotation<Header>() != null -> {
                     // Header 처리 로직 추가 가능
                     null
                 }
+
                 param.findAnnotation<Param>() != null -> {
                     convertParamValue(param.type.javaType, queryParams[param.findAnnotation<Param>()!!.key])
                 }
+
                 param.findAnnotation<PathVariable>() != null -> {
-                    convertParamValue(param.type.javaType, pathVariables[param.findAnnotation<PathVariable>()!!.key])
+                    convertParamValue(
+                        param.type.javaType,
+                        pathVariables[param.findAnnotation<PathVariable>()!!.key]
+                    )
                 }
+
                 else -> null
             }
         }.toTypedArray()
         return function.call(controller, *args)
     }
-}
-private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: String?): Any? {
-    return when (paramType) {
+
+    private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: String?): Any? = when (paramType) {
         String::class.java -> paramValue
         Int::class.java, java.lang.Integer::class.java -> paramValue?.toInt()
         Boolean::class.java, java.lang.Boolean::class.java -> paramValue?.toBoolean()
@@ -120,3 +204,5 @@ private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: Str
         else -> paramValue
     }
 }
+private typealias Path = String
+private fun Path.ensureLeadingSlash() = if (startsWith("/")) this else "/$this"

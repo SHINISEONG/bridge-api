@@ -14,26 +14,28 @@ class RequestHandlerTest: StringSpec({
     val objectMapper = ObjectMapper().findAndRegisterModules()
         .registerModules(JacksonCustomSerializeModule())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    val registry = ControllerRegistry(objectMapper).apply {
-        registerController("api/v1/users", userController)
-        registerController("api/v1/products", productController)
-    }
+    val registry = RouterRegistry.builder()
+        .setSerializer(objectMapper)
+        .registerController("api/v1/users", userController)
+        .registerController("api/v1/products", productController)
+        .build()
+
 
     "handleRequest" should {
         "GET: /api/v1/users/:id - path variable id=1" {
-            registry.handleRequest("api/v1/users/1", MethodType.GET) shouldBe """
+            registry.routingRequest("api/v1/users/1", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":1}}
             """.trimIndent()
         }
 
         "POST: /api/v1/users - create user" {
-            registry.handleRequest("api/v1/users", MethodType.POST) shouldBe """
+            registry.routingRequest("api/v1/users", MethodType.POST) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":0}}
             """.trimIndent()
         }
 
         "DELETE: /api/v1/users/:id - delete user" {
-            registry.handleRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
+            registry.routingRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"success","data":{}}
             """.trimIndent()
         }
@@ -43,19 +45,19 @@ class RequestHandlerTest: StringSpec({
                 {"name":"John","age":30,"type":"1"}
             """.trimIndent()
 
-            registry.handleRequest("api/v1/users/1/user-type", MethodType.PATCH, body) shouldBe """
+            registry.routingRequest("api/v1/users/1/user-type", MethodType.PATCH, body) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":30,"type":1}}
             """.trimIndent()
         }
 
         "GET: /api/v1/products/:id - path variable id=1" {
-            registry.handleRequest("api/v1/products/1", MethodType.GET) shouldBe """
+            registry.routingRequest("api/v1/products/1", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":10}}
             """.trimIndent()
         }
 
         "POST: /api/v1/products - create product" {
-            registry.handleRequest("api/v1/products", MethodType.POST) shouldBe """
+            registry.routingRequest("api/v1/products", MethodType.POST) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":10}}
             """.trimIndent()
         }
@@ -65,7 +67,7 @@ class RequestHandlerTest: StringSpec({
                 [{"name":"Apple","price":100,"stock":10},{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            registry.handleRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            registry.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Apple","price":100,"stock":10},{"id":2,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
@@ -75,21 +77,34 @@ class RequestHandlerTest: StringSpec({
                 [{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            registry.handleRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            registry.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
 
         "DELETE: /api/v1/products/:id - delete product" {
-            registry.handleRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
+            registry.routingRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"delete success","data":{}}
             """.trimIndent()
         }
 
         "PATCH: /api/v1/products/:id/stock/:stock - update product stock" {
-            registry.handleRequest("api/v1/products/1/stock/20", MethodType.PATCH) shouldBe """
+            registry.routingRequest("api/v1/products/1/stock/20", MethodType.PATCH) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":20}}
             """.trimIndent()
         }
     }
 })
+
+fun main() {
+    val userController = UserController()
+    val productController = ProductController()
+
+    val objectMapper = ObjectMapper().findAndRegisterModules()
+        .registerModules(JacksonCustomSerializeModule())
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    val registry = RouterRegistry.builder()
+        .setSerializer(objectMapper)
+        .registerController("api/v1/users", userController)
+        .build()
+}
