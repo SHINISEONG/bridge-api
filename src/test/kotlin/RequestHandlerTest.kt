@@ -28,6 +28,12 @@ class RequestHandlerTest: StringSpec({
             """.trimIndent()
         }
 
+        "GET: /api/v1/users/all - get all users" {
+            registry.routingRequest("api/v1/users/all", MethodType.GET) shouldBe """
+                {"status":0,"message":"success","data":[{"id":1,"name":"John","age":20,"type":0},{"id":2,"name":"Jane","age":22,"type":1}]}
+            """.trimIndent()
+        }
+
         "POST: /api/v1/users - create user" {
             registry.routingRequest("api/v1/users", MethodType.POST) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":0}}

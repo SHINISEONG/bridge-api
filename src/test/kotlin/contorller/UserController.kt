@@ -55,4 +55,26 @@ class UserController {
         )
     }
 
+    @Get("all")
+    fun getAllUsers(): ApiCommonResDto<List<UserResDto>> {
+        return ApiCommonResDto(
+            status = 0,
+            message = "success",
+            data = listOf(
+                UserResDto(
+                    id = 1,
+                    name = "John",
+                    age = 20,
+                    type = UserType.ADMIN,
+                ),
+                UserResDto(
+                    id = 2,
+                    name = "Jane",
+                    age = 22,
+                    type = UserType.SELLER,
+                ),
+            ),
+        )
+    }
+
 }
