@@ -1,10 +1,11 @@
-import annotation.*
+import annotation.method.*
 
 enum class MethodType {
     GET, POST, PATCH, DELETE, PUT
 }
 
 private typealias HttpMethodAnnotation = Annotation
+
 fun HttpMethodAnnotation.toMethodType() = when (this) {
     is Get -> MethodType.GET
     is Post -> MethodType.POST

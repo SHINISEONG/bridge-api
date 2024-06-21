@@ -1,18 +1,21 @@
-import annotation.*
+import annotation.method.*
+import annotation.param.Header
+import annotation.param.JsonBody
+import annotation.param.PathVariable
+import annotation.param.Query
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.valueParameters
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-
 import kotlin.reflect.jvm.javaType
 
 data class RouteInfo(
     val function: KFunction<*>,
     val controller: Any,
-    val method: MethodType
+    val method: MethodType,
 )
 
 private data class RouteNode(
@@ -20,12 +23,12 @@ private data class RouteNode(
     val routeInfoByMethod: MutableMap<MethodType, RouteInfo> = mutableMapOf(),
     var routeInfo: RouteInfo? = null,
     val isPathVariable: Boolean = false,
-    val pathVariableName: String? = null
+    val pathVariableName: String? = null,
 )
 
 class RouterRegistry private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
-    private val routeTree: RouteNode = RouteNode()
+    private val routeTree: RouteNode = RouteNode(),
 ) {
     companion object {
         fun builder(): Builder {
@@ -127,7 +130,8 @@ class RouterRegistry private constructor(
         val (routeInfo, pathVariables) = findRoute(pathSegments, method)
 
         return if (routeInfo != null) {
-            val result = invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
+            val result =
+                invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
             objectMapper.writeValueAsString(result)
         } else {
             "404"
@@ -135,7 +139,11 @@ class RouterRegistry private constructor(
     }
 
     private fun findRoute(segments: List<String>, method: MethodType): Pair<RouteInfo?, Map<String, String>> {
-        tailrec fun find(currentNode: RouteNode, remainingSegments: List<String>, pathVariables: MutableMap<String, String>): Pair<RouteInfo?, Map<String, String>> {
+        tailrec fun find(
+            currentNode: RouteNode,
+            remainingSegments: List<String>,
+            pathVariables: MutableMap<String, String>,
+        ): Pair<RouteInfo?, Map<String, String>> {
             if (remainingSegments.isEmpty()) {
                 return currentNode.routeInfoByMethod[method] to pathVariables
             }
@@ -157,7 +165,7 @@ class RouterRegistry private constructor(
         function: KFunction<*>,
         queryParams: Map<String, String>,
         jsonStringBody: String,
-        pathVariables: Map<String, String>
+        pathVariables: Map<String, String>,
     ): Any? {
         val args = function.valueParameters.map { param ->
             when {
@@ -173,8 +181,8 @@ class RouterRegistry private constructor(
                     null
                 }
 
-                param.findAnnotation<Param>() != null -> {
-                    convertParamValue(param.type.javaType, queryParams[param.findAnnotation<Param>()!!.key])
+                param.findAnnotation<Query>() != null -> {
+                    convertParamValue(param.type.javaType, queryParams[param.findAnnotation<Query>()!!.key])
                 }
 
                 param.findAnnotation<PathVariable>() != null -> {
@@ -204,4 +212,5 @@ class RouterRegistry private constructor(
     }
 }
 private typealias Path = String
+
 private fun Path.ensureLeadingSlash() = if (startsWith("/")) this else "/$this"

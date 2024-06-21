@@ -1,6 +1,12 @@
 package contorller
 
-import annotation.*
+import annotation.method.Delete
+import annotation.method.Get
+import annotation.method.Patch
+import annotation.method.Post
+import annotation.param.JsonBody
+import annotation.param.PathVariable
+import annotation.param.Query
 import dto.req.UserReqDto
 import dto.res.ApiCommonResDto
 import dto.res.UserResDto
@@ -42,7 +48,7 @@ class UserController {
         return ApiCommonResDto(
             status = 0,
             message = "success",
-            data =userReq.toDomain(id).toResDto()
+            data = userReq.toDomain(id).toResDto()
         )
     }
 
@@ -56,24 +62,25 @@ class UserController {
     }
 
     @Get("all")
-    fun getAllUsers(): ApiCommonResDto<List<UserResDto>> {
+    fun getAllUsers(@Query("order") order: String): ApiCommonResDto<List<UserResDto>> {
+        val data = listOf(
+            UserResDto(
+                id = 1,
+                name = "John",
+                age = 20,
+                type = UserType.ADMIN,
+            ),
+            UserResDto(
+                id = 2,
+                name = "Jane",
+                age = 22,
+                type = UserType.SELLER,
+            )
+        )
         return ApiCommonResDto(
             status = 0,
             message = "success",
-            data = listOf(
-                UserResDto(
-                    id = 1,
-                    name = "John",
-                    age = 20,
-                    type = UserType.ADMIN,
-                ),
-                UserResDto(
-                    id = 2,
-                    name = "Jane",
-                    age = 22,
-                    type = UserType.SELLER,
-                ),
-            ),
+            data = if (order == "ASC") data.sortedBy { it.id } else data.sortedByDescending { it.id }
         )
     }
 

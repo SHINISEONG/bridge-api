@@ -7,7 +7,7 @@ import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import serializer.JacksonCustomSerializeModule
 
-class RequestHandlerTest: StringSpec({
+class RequestHandlerTest : StringSpec({
     val userController = UserController()
     val productController = ProductController()
 
@@ -29,7 +29,7 @@ class RequestHandlerTest: StringSpec({
         }
 
         "GET: /api/v1/users/all - get all users" {
-            registry.routingRequest("api/v1/users/all", MethodType.GET) shouldBe """
+            registry.routingRequest("api/v1/users/all?order=ASC", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"John","age":20,"type":0},{"id":2,"name":"Jane","age":22,"type":1}]}
             """.trimIndent()
         }

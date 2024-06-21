@@ -1,12 +1,15 @@
 package contorller
 
-import annotation.*
+import annotation.method.Delete
+import annotation.method.Get
+import annotation.method.Patch
+import annotation.method.Post
+import annotation.param.JsonBody
+import annotation.param.PathVariable
 import domain.Product
 import dto.req.ProductReqDto
 import dto.res.ApiCommonResDto
-import dto.res.ProductResDto
 import dto.res.toResDto
-import kotlin.random.Random
 
 class ProductController {
     @Get("/:id")
