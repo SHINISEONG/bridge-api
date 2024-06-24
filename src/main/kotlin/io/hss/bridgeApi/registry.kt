@@ -1,11 +1,18 @@
-import annotation.method.*
-import annotation.param.Header
-import annotation.param.JsonBody
-import annotation.param.PathVariable
-import annotation.param.Query
+package io.hss.bridgeApi
+
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.hss.bridgeApi.annotation.method.*
+import io.hss.bridgeApi.annotation.param.Header
+import io.hss.bridgeApi.annotation.param.JsonBody
+import io.hss.bridgeApi.annotation.param.PathVariable
+import io.hss.bridgeApi.annotation.param.Query
+import io.hss.bridgeApi.enums.MethodType
+import io.hss.bridgeApi.enums.toMethodType
+import io.hss.bridgeApi.type.ApiCommonRequest
+import io.hss.bridgeApi.util.deserializeFromJson
+import io.hss.bridgeApi.util.serializeToJson
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
@@ -30,12 +37,14 @@ class RouterRegistry private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val routeTree: RouteNode = RouteNode(),
 ) {
+    // === companion object ===
     companion object {
         fun builder(): Builder {
             return Builder()
         }
     }
 
+    // === Builder ===
     class Builder {
         private var objectMapper: ObjectMapper = jacksonObjectMapper()
         private val controllers = mutableMapOf<String, Any>()
@@ -58,6 +67,7 @@ class RouterRegistry private constructor(
                 routeTree = routeTree
             )
         }
+
 
         private fun buildRoutes() {
             controllers.forEach { (path, controller) ->
@@ -93,6 +103,7 @@ class RouterRegistry private constructor(
             }
         }
 
+
         private fun addRoute(path: String, routeInfo: RouteInfo) {
             val segments = path.split("/").filter { it.isNotEmpty() }
             tailrec fun add(currentNode: RouteNode, remainingSegments: List<String>) {
@@ -117,6 +128,16 @@ class RouterRegistry private constructor(
         }
     }
 
+    // === public functions ===
+    fun bridgeRequest(apiCommonRequestString: String): String {
+        val apiCommonRequest = apiCommonRequestString.deserializeFromJson<ApiCommonRequest>(objectMapper)
+        val pathAndQuery = apiCommonRequest.pathAndQuery
+        val method = apiCommonRequest.methodType
+        val bodyString = apiCommonRequest.body.serializeToJson(objectMapper)
+
+        return routingRequest(pathAndQuery, method, bodyString)
+    }
+
     fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String {
         val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
             it[0] to (it.getOrNull(1) ?: "")
@@ -132,12 +153,13 @@ class RouterRegistry private constructor(
         return if (routeInfo != null) {
             val result =
                 invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
-            objectMapper.writeValueAsString(result)
+            result?.serializeToJson(objectMapper) ?: "{}"
         } else {
             "404"
         }
     }
 
+    // === private functions ===
     private fun findRoute(segments: List<String>, method: MethodType): Pair<RouteInfo?, Map<String, String>> {
         tailrec fun find(
             currentNode: RouteNode,

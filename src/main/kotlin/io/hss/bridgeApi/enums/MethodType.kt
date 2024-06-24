@@ -1,4 +1,6 @@
-import annotation.method.*
+package io.hss.bridgeApi.enums
+
+import io.hss.bridgeApi.annotation.method.*
 
 enum class MethodType {
     GET, POST, PATCH, DELETE, PUT

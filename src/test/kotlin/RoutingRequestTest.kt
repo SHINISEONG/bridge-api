@@ -2,12 +2,14 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
+import io.hss.bridgeApi.RouterRegistry
+import io.hss.bridgeApi.enums.MethodType
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import serializer.JacksonCustomSerializeModule
 
-class RequestHandlerTest : StringSpec({
+class RoutingRequestTest : StringSpec({
     val userController = UserController()
     val productController = ProductController()
 
@@ -21,7 +23,7 @@ class RequestHandlerTest : StringSpec({
         .build()
 
 
-    "handleRequest" should {
+    "routingRequest" should {
         "GET: /api/v1/users/:id - path variable id=1" {
             registry.routingRequest("api/v1/users/1", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":1}}

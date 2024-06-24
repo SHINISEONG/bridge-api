@@ -1,15 +1,15 @@
 package contorller
 
-import annotation.method.Delete
-import annotation.method.Get
-import annotation.method.Patch
-import annotation.method.Post
-import annotation.param.JsonBody
-import annotation.param.PathVariable
 import domain.Product
 import dto.req.ProductReqDto
 import dto.res.ApiCommonResDto
 import dto.res.toResDto
+import io.hss.bridgeApi.annotation.method.Delete
+import io.hss.bridgeApi.annotation.method.Get
+import io.hss.bridgeApi.annotation.method.Patch
+import io.hss.bridgeApi.annotation.method.Post
+import io.hss.bridgeApi.annotation.param.JsonBody
+import io.hss.bridgeApi.annotation.param.PathVariable
 
 class ProductController {
     @Get("/:id")
@@ -40,7 +40,7 @@ class ProductController {
     fun createProducts(@JsonBody products: List<ProductReqDto>) = ApiCommonResDto(
         status = 0,
         message = "success",
-        data = products.mapIndexed { index, it ->it.toDomain(index + 1L) }.map { it.toResDto() }
+        data = products.mapIndexed { index, it -> it.toDomain(index + 1L) }.map { it.toResDto() }
     )
 
     @Patch("/:id/stock/:stock")

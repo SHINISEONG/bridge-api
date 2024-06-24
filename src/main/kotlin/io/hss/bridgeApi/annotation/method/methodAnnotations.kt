@@ -1,4 +1,4 @@
-package annotation.method
+package io.hss.bridgeApi.annotation.method
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)

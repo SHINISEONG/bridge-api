@@ -1,17 +1,17 @@
 package contorller
 
-import annotation.method.Delete
-import annotation.method.Get
-import annotation.method.Patch
-import annotation.method.Post
-import annotation.param.JsonBody
-import annotation.param.PathVariable
-import annotation.param.Query
 import dto.req.UserReqDto
 import dto.res.ApiCommonResDto
 import dto.res.UserResDto
 import dto.res.toResDto
 import enums.UserType
+import io.hss.bridgeApi.annotation.method.Delete
+import io.hss.bridgeApi.annotation.method.Get
+import io.hss.bridgeApi.annotation.method.Patch
+import io.hss.bridgeApi.annotation.method.Post
+import io.hss.bridgeApi.annotation.param.JsonBody
+import io.hss.bridgeApi.annotation.param.PathVariable
+import io.hss.bridgeApi.annotation.param.Query
 
 // /api/v1/users
 class UserController {
@@ -30,16 +30,11 @@ class UserController {
     }
 
     @Post("")
-    fun createUser(): ApiCommonResDto<UserResDto> {
+    fun createUser(@JsonBody userReq: UserReqDto): ApiCommonResDto<UserResDto> {
         return ApiCommonResDto(
             status = 0,
             message = "success",
-            data = UserResDto(
-                id = 1,
-                name = "John",
-                age = 20,
-                type = UserType.ADMIN,
-            ),
+            data = userReq.toDomain(1).toResDto(),
         )
     }
 
