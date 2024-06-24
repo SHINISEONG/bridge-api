@@ -19,7 +19,7 @@ import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.javaType
 
-data class RouteInfo(
+private data class RouteInfo(
     val function: KFunction<*>,
     val controller: Any,
     val method: MethodType,
