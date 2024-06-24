@@ -3,7 +3,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
 import dto.req.UserReqDto
-import io.hss.bridgeApi.RouterRegistry
+import io.hss.bridgeApi.BridgeRouter
 import io.hss.bridgeApi.enums.MethodType
 import io.hss.bridgeApi.type.ApiCommonRequest
 import io.hss.bridgeApi.util.serializeToJson
@@ -18,7 +18,7 @@ class BridgeRequestTest : StringSpec({
     val objectMapper = ObjectMapper().findAndRegisterModules()
         .registerModules(JacksonCustomSerializeModule())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    val registry = RouterRegistry.builder()
+    val router = BridgeRouter.builder()
         .setSerializer(objectMapper)
         .registerController("api/v1/users", userController)
         .registerController("api/v1/products", productController)
@@ -30,7 +30,7 @@ class BridgeRequestTest : StringSpec({
             method = MethodType.GET,
             body = ""
         ).serializeToJson()
-        registry.bridgeRequest(requestString) shouldBe userController.getUserById(1).serializeToJson(objectMapper)
+        router.bridgeRequest(requestString) shouldBe userController.getUserById(1).serializeToJson(objectMapper)
     }
 
     "POST: /api/v1/users - create user" {
@@ -39,7 +39,7 @@ class BridgeRequestTest : StringSpec({
             method = MethodType.POST,
             body = UserReqDto(name = "John", age = 20, type = 0)
         ).serializeToJson()
-        registry.bridgeRequest(requestString) shouldBe userController.createUser(
+        router.bridgeRequest(requestString) shouldBe userController.createUser(
             UserReqDto(
                 name = "John",
                 age = 20,
@@ -55,7 +55,7 @@ class BridgeRequestTest : StringSpec({
             body = UserReqDto(name = "John", age = 20, type = 1)
         ).serializeToJson()
         val userReq = UserReqDto(name = "John", age = 20, type = 1)
-        registry.bridgeRequest(requestString) shouldBe userController.updateUserAge(1, userReq)
+        router.bridgeRequest(requestString) shouldBe userController.updateUserAge(1, userReq)
             .serializeToJson(objectMapper)
     }
 
@@ -65,7 +65,7 @@ class BridgeRequestTest : StringSpec({
             method = MethodType.DELETE,
             body = ""
         ).serializeToJson()
-        registry.bridgeRequest(requestString) shouldBe userController.deleteUser(1).serializeToJson(objectMapper)
+        router.bridgeRequest(requestString) shouldBe userController.deleteUser(1).serializeToJson(objectMapper)
     }
 
     "GET: /api/v1/users/all - get all users(ASC)" {
@@ -74,7 +74,7 @@ class BridgeRequestTest : StringSpec({
             method = MethodType.GET,
             body = ""
         ).serializeToJson()
-        registry.bridgeRequest(requestString) shouldBe userController.getAllUsers("ASC").serializeToJson(objectMapper)
+        router.bridgeRequest(requestString) shouldBe userController.getAllUsers("ASC").serializeToJson(objectMapper)
     }
 
     "GET: /api/v1/users/all - get all users(DESC)" {
@@ -83,6 +83,6 @@ class BridgeRequestTest : StringSpec({
             method = MethodType.GET,
             body = ""
         ).serializeToJson()
-        registry.bridgeRequest(requestString) shouldBe userController.getAllUsers("DESC").serializeToJson(objectMapper)
+        router.bridgeRequest(requestString) shouldBe userController.getAllUsers("DESC").serializeToJson(objectMapper)
     }
 })

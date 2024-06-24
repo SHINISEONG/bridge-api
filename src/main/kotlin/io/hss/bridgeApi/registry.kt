@@ -33,7 +33,7 @@ private data class RouteNode(
     val pathVariableName: String? = null,
 )
 
-class RouterRegistry private constructor(
+class BridgeRouter private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val routeTree: RouteNode = RouteNode(),
 ) {
@@ -60,9 +60,9 @@ class RouterRegistry private constructor(
             return this
         }
 
-        fun build(): RouterRegistry {
+        fun build(): BridgeRouter {
             buildRoutes()
-            return RouterRegistry(
+            return BridgeRouter(
                 objectMapper = objectMapper,
                 routeTree = routeTree
             )

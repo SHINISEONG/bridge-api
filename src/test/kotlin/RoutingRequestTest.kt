@@ -3,7 +3,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
 import dto.req.UserReqDto
-import io.hss.bridgeApi.RouterRegistry
+import io.hss.bridgeApi.BridgeRouter
 import io.hss.bridgeApi.enums.MethodType
 import io.hss.bridgeApi.util.serializeToJson
 import io.kotest.core.spec.style.StringSpec
@@ -18,7 +18,7 @@ class RoutingRequestTest : StringSpec({
     val objectMapper = ObjectMapper().findAndRegisterModules()
         .registerModules(JacksonCustomSerializeModule())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    val registry = RouterRegistry.builder()
+    val router = BridgeRouter.builder()
         .setSerializer(objectMapper)
         .registerController("api/v1/users", userController)
         .registerController("api/v1/products", productController)
@@ -27,19 +27,19 @@ class RoutingRequestTest : StringSpec({
 
     "routingRequest" should {
         "GET: /api/v1/users/:id - path variable id=1" {
-            registry.routingRequest("api/v1/users/1", MethodType.GET) shouldBe """
+            router.routingRequest("api/v1/users/1", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":1}}
             """.trimIndent()
         }
 
         "GET: /api/v1/users/all - get all users" {
-            registry.routingRequest("api/v1/users/all?order=ASC", MethodType.GET) shouldBe """
+            router.routingRequest("api/v1/users/all?order=ASC", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"John","age":20,"type":0},{"id":2,"name":"Jane","age":22,"type":1}]}
             """.trimIndent()
         }
 
         "POST: /api/v1/users - create user" {
-            registry.routingRequest(
+            router.routingRequest(
                 "api/v1/users", MethodType.POST, UserReqDto(
                     name = "John",
                     age = 20,
@@ -51,7 +51,7 @@ class RoutingRequestTest : StringSpec({
         }
 
         "DELETE: /api/v1/users/:id - delete user" {
-            registry.routingRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
+            router.routingRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"success","data":{}}
             """.trimIndent()
         }
@@ -61,19 +61,19 @@ class RoutingRequestTest : StringSpec({
                 {"name":"John","age":30,"type":"1"}
             """.trimIndent()
 
-            registry.routingRequest("api/v1/users/1/user-type", MethodType.PATCH, body) shouldBe """
+            router.routingRequest("api/v1/users/1/user-type", MethodType.PATCH, body) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":30,"type":1}}
             """.trimIndent()
         }
 
         "GET: /api/v1/products/:id - path variable id=1" {
-            registry.routingRequest("api/v1/products/1", MethodType.GET) shouldBe """
+            router.routingRequest("api/v1/products/1", MethodType.GET) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":10}}
             """.trimIndent()
         }
 
         "POST: /api/v1/products - create product" {
-            registry.routingRequest("api/v1/products", MethodType.POST) shouldBe """
+            router.routingRequest("api/v1/products", MethodType.POST) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":10}}
             """.trimIndent()
         }
@@ -83,7 +83,7 @@ class RoutingRequestTest : StringSpec({
                 [{"name":"Apple","price":100,"stock":10},{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            registry.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            router.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Apple","price":100,"stock":10},{"id":2,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
@@ -93,19 +93,19 @@ class RoutingRequestTest : StringSpec({
                 [{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            registry.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            router.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
 
         "DELETE: /api/v1/products/:id - delete product" {
-            registry.routingRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
+            router.routingRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"delete success","data":{}}
             """.trimIndent()
         }
 
         "PATCH: /api/v1/products/:id/stock/:stock - update product stock" {
-            registry.routingRequest("api/v1/products/1/stock/20", MethodType.PATCH) shouldBe """
+            router.routingRequest("api/v1/products/1/stock/20", MethodType.PATCH) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":20}}
             """.trimIndent()
         }
