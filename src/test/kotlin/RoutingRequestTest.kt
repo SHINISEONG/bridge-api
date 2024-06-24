@@ -2,8 +2,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
+import dto.req.UserReqDto
 import io.hss.bridgeApi.RouterRegistry
 import io.hss.bridgeApi.enums.MethodType
+import io.hss.bridgeApi.util.serializeToJson
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -37,7 +39,13 @@ class RoutingRequestTest : StringSpec({
         }
 
         "POST: /api/v1/users - create user" {
-            registry.routingRequest("api/v1/users", MethodType.POST) shouldBe """
+            registry.routingRequest(
+                "api/v1/users", MethodType.POST, UserReqDto(
+                    name = "John",
+                    age = 20,
+                    type = 0
+                ).serializeToJson(objectMapper)
+            ) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":0}}
             """.trimIndent()
         }

@@ -27,7 +27,7 @@ class BridgeRequestTest : StringSpec({
     "GET: /api/v1/users/:id - path variable id=1" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users/1",
-            methodType = MethodType.GET,
+            method = MethodType.GET,
             body = ""
         ).serializeToJson()
         registry.bridgeRequest(requestString) shouldBe userController.getUserById(1).serializeToJson(objectMapper)
@@ -36,7 +36,7 @@ class BridgeRequestTest : StringSpec({
     "POST: /api/v1/users - create user" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users",
-            methodType = MethodType.POST,
+            method = MethodType.POST,
             body = UserReqDto(name = "John", age = 20, type = 0)
         ).serializeToJson()
         registry.bridgeRequest(requestString) shouldBe userController.createUser(
@@ -51,7 +51,7 @@ class BridgeRequestTest : StringSpec({
     "PATCH: /api/v1/users/:id/user-type - update user type" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users/1/user-type",
-            methodType = MethodType.PATCH,
+            method = MethodType.PATCH,
             body = UserReqDto(name = "John", age = 20, type = 1)
         ).serializeToJson()
         val userReq = UserReqDto(name = "John", age = 20, type = 1)
@@ -62,7 +62,7 @@ class BridgeRequestTest : StringSpec({
     "DELETE: /api/v1/users/:id - delete user" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users/1",
-            methodType = MethodType.DELETE,
+            method = MethodType.DELETE,
             body = ""
         ).serializeToJson()
         registry.bridgeRequest(requestString) shouldBe userController.deleteUser(1).serializeToJson(objectMapper)
@@ -71,7 +71,7 @@ class BridgeRequestTest : StringSpec({
     "GET: /api/v1/users/all - get all users(ASC)" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users/all?order=ASC",
-            methodType = MethodType.GET,
+            method = MethodType.GET,
             body = ""
         ).serializeToJson()
         registry.bridgeRequest(requestString) shouldBe userController.getAllUsers("ASC").serializeToJson(objectMapper)
@@ -80,7 +80,7 @@ class BridgeRequestTest : StringSpec({
     "GET: /api/v1/users/all - get all users(DESC)" {
         val requestString = ApiCommonRequest(
             pathAndQuery = "api/v1/users/all?order=DESC",
-            methodType = MethodType.GET,
+            method = MethodType.GET,
             body = ""
         ).serializeToJson()
         registry.bridgeRequest(requestString) shouldBe userController.getAllUsers("DESC").serializeToJson(objectMapper)

@@ -132,7 +132,7 @@ class RouterRegistry private constructor(
     fun bridgeRequest(apiCommonRequestString: String): String {
         val apiCommonRequest = apiCommonRequestString.deserializeFromJson<ApiCommonRequest>(objectMapper)
         val pathAndQuery = apiCommonRequest.pathAndQuery
-        val method = apiCommonRequest.methodType
+        val method = apiCommonRequest.method
         val bodyString = apiCommonRequest.body.serializeToJson(objectMapper)
 
         return routingRequest(pathAndQuery, method, bodyString)
