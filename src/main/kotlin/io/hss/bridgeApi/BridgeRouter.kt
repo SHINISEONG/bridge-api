@@ -21,12 +21,26 @@ import kotlin.reflect.full.memberFunctions
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.javaType
 
+/**
+ * Data class representing route information.
+ * @property function The KFunction associated with the route.
+ * @property controller The controller instance handling the route.
+ * @property method The HTTP method type for the route.
+ */
 private data class RouteInfo(
     val function: KFunction<*>,
     val controller: Any,
     val method: MethodType,
 )
 
+/**
+ * Data class representing a node in the route tree.
+ * @property children Child nodes of the current node.
+ * @property routeInfoByMethod Mapping of HTTP method types to route information.
+ * @property routeInfo The route information, if any, associated with this node.
+ * @property isPathVariable Indicates if the node is a path variable.
+ * @property pathVariableName The name of the path variable, if any.
+ */
 private data class RouteNode(
     val children: MutableMap<String, RouteNode> = mutableMapOf(),
     val routeInfoByMethod: MutableMap<MethodType, RouteInfo> = mutableMapOf(),
@@ -35,45 +49,81 @@ private data class RouteNode(
     val pathVariableName: String? = null,
 )
 
+/**
+ * Main router class for handling API routes.
+ * @property objectMapper The ObjectMapper used for JSON serialization/deserialization.
+ * @property routeTree The root node of the route tree.
+ * @property errorHandlers List of error handlers.
+ */
 class BridgeRouter private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val routeTree: RouteNode = RouteNode(),
     private val errorHandlers: List<ErrorHandler> = emptyList(),
 ) {
-    // === companion object ===
     companion object {
+        /**
+         * Creates a new Builder instance for configuring and building a BridgeRouter.
+         * @return A new Builder instance.
+         */
         fun builder(): Builder {
             return Builder()
         }
     }
 
-    // === Builder ===
+    /**
+     * Builder class for constructing a BridgeRouter instance.
+     */
     class Builder {
         private var objectMapper: ObjectMapper = jacksonObjectMapper()
         private val controllers = mutableMapOf<String, Any>()
         private val errorHandlers: MutableList<ErrorHandler> = mutableListOf()
         private val routeTree = RouteNode()
 
+        /**
+         * Sets a custom serializer for JSON processing.
+         * @param objectMapper The ObjectMapper to use.
+         * @return The Builder instance for chaining.
+         */
         fun setSerializer(objectMapper: ObjectMapper): Builder {
             this.objectMapper = objectMapper
             return this
         }
 
+        /**
+         * Registers a controller with a specified path.
+         * @param path The base path for the controller.
+         * @param controller The controller instance.
+         * @return The Builder instance for chaining.
+         */
         fun registerController(path: String, controller: Any): Builder {
             controllers[path] = controller
             return this
         }
 
+        /**
+         * Registers an error handler.
+         * @param errorHandler The ErrorHandler instance.
+         * @return The Builder instance for chaining.
+         */
         fun registerErrorHandler(errorHandler: ErrorHandler): Builder {
             errorHandlers.add(errorHandler)
             return this
         }
 
+        /**
+         * Registers multiple error handlers.
+         * @param errorHandlers List of ErrorHandler instances.
+         * @return The Builder instance for chaining.
+         */
         fun registerAllErrorHandlers(errorHandlers: List<ErrorHandler>): Builder {
             this.errorHandlers.addAll(errorHandlers)
             return this
         }
 
+        /**
+         * Builds and returns a configured BridgeRouter instance.
+         * @return The configured BridgeRouter instance.
+         */
         fun build(): BridgeRouter {
             buildRoutes()
             return BridgeRouter(
@@ -83,6 +133,9 @@ class BridgeRouter private constructor(
             )
         }
 
+        /**
+         * Constructs the route tree from registered controllers and their annotated methods.
+         */
         private fun buildRoutes() {
             controllers.forEach { (path, controller) ->
                 val controllerClass = controller::class
@@ -117,6 +170,11 @@ class BridgeRouter private constructor(
             }
         }
 
+        /**
+         * Adds a route to the route tree.
+         * @param path The full path of the route.
+         * @param routeInfo The route information.
+         */
         private fun addRoute(path: String, routeInfo: RouteInfo) {
             val segments = path.split("/").filter { it.isNotEmpty() }
             tailrec fun add(currentNode: RouteNode, remainingSegments: List<String>) {
@@ -141,7 +199,11 @@ class BridgeRouter private constructor(
         }
     }
 
-    // === public functions ===
+    /**
+     * Handles an API request by bridging the request to the appropriate controller method.
+     * @param apiCommonRequestString The API request as a JSON string.
+     * @return The response as a JSON string.
+     */
     fun bridgeRequest(apiCommonRequestString: String): String {
         val apiCommonRequest = apiCommonRequestString.deserializeFromJson<ApiCommonRequest>(objectMapper)
         val pathAndQuery = apiCommonRequest.pathAndQuery
@@ -151,6 +213,13 @@ class BridgeRouter private constructor(
         return routingRequest(pathAndQuery, method, bodyString)
     }
 
+    /**
+     * Routes an incoming request to the appropriate controller method.
+     * @param pathAndQueryString The path and query string of the request.
+     * @param method The HTTP method of the request.
+     * @param jsonStringBody The body of the request as a JSON string.
+     * @return The response as a JSON string.
+     */
     fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String =
         try {
             val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
@@ -180,7 +249,12 @@ class BridgeRouter private constructor(
             if (results.isEmpty()) "500" else results.first().serializeToJson(objectMapper)
         }
 
-    // === private functions ===
+    /**
+     * Finds the appropriate route in the route tree.
+     * @param segments The path segments of the request.
+     * @param method The HTTP method of the request.
+     * @return A pair of RouteInfo and a map of path variables.
+     */
     private fun findRoute(segments: List<String>, method: MethodType): Pair<RouteInfo?, Map<String, String>> {
         tailrec fun find(
             currentNode: RouteNode,
@@ -203,6 +277,15 @@ class BridgeRouter private constructor(
         return find(routeTree, segments, mutableMapOf())
     }
 
+    /**
+     * Invokes the appropriate controller method with the resolved parameters.
+     * @param controller The controller instance.
+     * @param function The function to invoke.
+     * @param queryParams The query parameters.
+     * @param jsonStringBody The body of the request as a JSON string.
+     * @param pathVariables The path variables.
+     * @return The result of the function invocation.
+     */
     private fun invokeFunction(
         controller: Any,
         function: KFunction<*>,
@@ -220,7 +303,7 @@ class BridgeRouter private constructor(
                 }
 
                 param.findAnnotation<Header>() != null -> {
-                    // Header 처리 로직 추가 가능
+                    // Header handling logic can be added here
                     null
                 }
 
@@ -241,6 +324,12 @@ class BridgeRouter private constructor(
         return function.call(controller, *args)
     }
 
+    /**
+     * Converts a string parameter value to the appropriate type.
+     * @param paramType The target type.
+     * @param paramValue The string value.
+     * @return The converted value.
+     */
     private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: String?): Any? = when (paramType) {
         String::class.java -> paramValue
         Int::class.java, java.lang.Integer::class.java -> paramValue?.toInt()
@@ -254,6 +343,11 @@ class BridgeRouter private constructor(
         else -> paramValue
     }
 }
+
 private typealias Path = String
 
+/**
+ * Ensures that a path string starts with a leading slash.
+ * @return The path string with a leading slash.
+ */
 private fun Path.ensureLeadingSlash() = if (startsWith("/")) this else "/$this"
