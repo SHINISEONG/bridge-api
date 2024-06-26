@@ -11,8 +11,10 @@ import io.hss.bridgeApi.annotation.param.Query
 import io.hss.bridgeApi.enums.MethodType
 import io.hss.bridgeApi.enums.toMethodType
 import io.hss.bridgeApi.type.ApiCommonRequest
+import io.hss.bridgeApi.type.ErrorHandler
 import io.hss.bridgeApi.util.deserializeFromJson
 import io.hss.bridgeApi.util.serializeToJson
+import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberFunctions
@@ -36,6 +38,7 @@ private data class RouteNode(
 class BridgeRouter private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val routeTree: RouteNode = RouteNode(),
+    private val errorHandlers: List<ErrorHandler> = emptyList(),
 ) {
     // === companion object ===
     companion object {
@@ -48,6 +51,7 @@ class BridgeRouter private constructor(
     class Builder {
         private var objectMapper: ObjectMapper = jacksonObjectMapper()
         private val controllers = mutableMapOf<String, Any>()
+        private val errorHandlers: MutableList<ErrorHandler> = mutableListOf()
         private val routeTree = RouteNode()
 
         fun setSerializer(objectMapper: ObjectMapper): Builder {
@@ -60,14 +64,24 @@ class BridgeRouter private constructor(
             return this
         }
 
+        fun registerErrorHandler(errorHandler: ErrorHandler): Builder {
+            errorHandlers.add(errorHandler)
+            return this
+        }
+
+        fun registerAllErrorHandlers(errorHandlers: List<ErrorHandler>): Builder {
+            this.errorHandlers.addAll(errorHandlers)
+            return this
+        }
+
         fun build(): BridgeRouter {
             buildRoutes()
             return BridgeRouter(
                 objectMapper = objectMapper,
-                routeTree = routeTree
+                routeTree = routeTree,
+                errorHandlers = errorHandlers
             )
         }
-
 
         private fun buildRoutes() {
             controllers.forEach { (path, controller) ->
@@ -103,7 +117,6 @@ class BridgeRouter private constructor(
             }
         }
 
-
         private fun addRoute(path: String, routeInfo: RouteInfo) {
             val segments = path.split("/").filter { it.isNotEmpty() }
             tailrec fun add(currentNode: RouteNode, remainingSegments: List<String>) {
@@ -138,26 +151,34 @@ class BridgeRouter private constructor(
         return routingRequest(pathAndQuery, method, bodyString)
     }
 
-    fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String {
-        val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
-            it[0] to (it.getOrNull(1) ?: "")
-        }
-        val queryParams = queryString.split("&").mapNotNull {
-            val (key, value) = it.split("=", limit = 2).let { it[0] to it.getOrNull(1) }
-            if (key.isNotEmpty() && value != null) key to value else null
-        }.toMap()
+    fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String =
+        try {
+            val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
+                it[0] to (it.getOrNull(1) ?: "")
+            }
+            val queryParams = queryString.split("&").mapNotNull {
+                val (key, value) = it.split("=", limit = 2).let { it[0] to it.getOrNull(1) }
+                if (key.isNotEmpty() && value != null) key to value else null
+            }.toMap()
 
-        val pathSegments = path.split("/").filter { it.isNotEmpty() }
-        val (routeInfo, pathVariables) = findRoute(pathSegments, method)
+            val pathSegments = path.split("/").filter { it.isNotEmpty() }
+            val (routeInfo, pathVariables) = findRoute(pathSegments, method)
 
-        return if (routeInfo != null) {
-            val result =
-                invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
-            result?.serializeToJson(objectMapper) ?: "{}"
-        } else {
-            "404"
+            if (routeInfo != null) {
+                val result =
+                    invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
+                result?.serializeToJson(objectMapper) ?: "{}"
+            } else {
+                "404"
+            }
+        } catch (throwable: Throwable) {
+            val actualException = when (throwable) {
+                is InvocationTargetException -> throwable.targetException
+                else -> throwable
+            }
+            val results = errorHandlers.mapNotNull { it.handle(actualException) }
+            if (results.isEmpty()) "500" else results.first().serializeToJson(objectMapper)
         }
-    }
 
     // === private functions ===
     private fun findRoute(segments: List<String>, method: MethodType): Pair<RouteInfo?, Map<String, String>> {

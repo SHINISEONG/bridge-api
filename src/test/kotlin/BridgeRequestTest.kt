@@ -3,6 +3,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
 import dto.req.UserReqDto
+import errorHandler.serviceExceptionHandler
+import errorHandler.universalExceptionHandler
 import io.hss.bridgeApi.BridgeRouter
 import io.hss.bridgeApi.enums.MethodType
 import io.hss.bridgeApi.type.ApiCommonRequest
@@ -22,6 +24,8 @@ class BridgeRequestTest : StringSpec({
         .setSerializer(objectMapper)
         .registerController("api/v1/users", userController)
         .registerController("api/v1/products", productController)
+        .registerErrorHandler(serviceExceptionHandler)
+        .registerErrorHandler(universalExceptionHandler)
         .build()
 
     "GET: /api/v1/users/:id - path variable id=1" {
