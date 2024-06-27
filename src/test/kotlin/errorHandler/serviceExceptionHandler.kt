@@ -2,7 +2,7 @@ package errorHandler
 
 import dto.res.ApiCommonResDto
 import exceptions.PaymentException
-import io.hss.bridgeApi.type.ErrorHandler
+import io.github.shiniseong.bridgeApi.type.ErrorHandler
 import vo.ErrorData
 
 val serviceExceptionHandler = ErrorHandler { throwable ->

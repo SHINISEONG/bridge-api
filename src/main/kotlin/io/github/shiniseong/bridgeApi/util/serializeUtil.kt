@@ -1,4 +1,4 @@
-package io.hss.bridgeApi.util
+package io.github.shiniseong.bridgeApi.util
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper

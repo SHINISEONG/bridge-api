@@ -3,9 +3,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
 import dto.req.UserReqDto
-import io.hss.bridgeApi.BridgeRouter
-import io.hss.bridgeApi.enums.MethodType
-import io.hss.bridgeApi.util.serializeToJson
+import io.github.shiniseong.bridgeApi.BridgeRouter
+import io.github.shiniseong.bridgeApi.enums.MethodType
+import io.github.shiniseong.bridgeApi.util.serializeToJson
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe

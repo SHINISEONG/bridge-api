@@ -1,9 +1,9 @@
 import contorller.PaymentController
 import errorHandler.serviceExceptionHandler
 import errorHandler.universalExceptionHandler
-import io.hss.bridgeApi.BridgeRouter
-import io.hss.bridgeApi.enums.MethodType
-import io.hss.bridgeApi.util.defaultObjectMapper
+import io.github.shiniseong.bridgeApi.BridgeRouter
+import io.github.shiniseong.bridgeApi.enums.MethodType
+import io.github.shiniseong.bridgeApi.util.defaultObjectMapper
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

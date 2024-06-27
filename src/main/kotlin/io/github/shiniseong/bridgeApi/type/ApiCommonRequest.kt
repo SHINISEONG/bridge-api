@@ -1,6 +1,6 @@
-package io.hss.bridgeApi.type
+package io.github.shiniseong.bridgeApi.type
 
-import io.hss.bridgeApi.enums.MethodType
+import io.github.shiniseong.bridgeApi.enums.MethodType
 
 data class ApiCommonRequest(
     val pathAndQuery: String,

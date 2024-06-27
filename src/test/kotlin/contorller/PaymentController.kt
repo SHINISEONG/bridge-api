@@ -1,8 +1,8 @@
 package contorller
 
 import exceptions.PaymentException
-import io.hss.bridgeApi.annotation.method.Get
-import io.hss.bridgeApi.annotation.method.Post
+import io.github.shiniseong.bridgeApi.annotation.method.Get
+import io.github.shiniseong.bridgeApi.annotation.method.Post
 
 class PaymentController {
     @Get("")

@@ -1,4 +1,4 @@
-package io.hss.bridgeApi.annotation.param
+package io.github.shiniseong.bridgeApi.annotation.param
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)

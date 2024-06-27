@@ -1,6 +1,6 @@
-package io.hss.bridgeApi.enums
+package io.github.shiniseong.bridgeApi.enums
 
-import io.hss.bridgeApi.annotation.method.*
+import io.github.shiniseong.bridgeApi.annotation.method.*
 
 enum class MethodType {
     GET, POST, PATCH, DELETE, PUT

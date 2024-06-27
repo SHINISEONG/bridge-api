@@ -4,12 +4,12 @@ import domain.Product
 import dto.req.ProductReqDto
 import dto.res.ApiCommonResDto
 import dto.res.toResDto
-import io.hss.bridgeApi.annotation.method.Delete
-import io.hss.bridgeApi.annotation.method.Get
-import io.hss.bridgeApi.annotation.method.Patch
-import io.hss.bridgeApi.annotation.method.Post
-import io.hss.bridgeApi.annotation.param.JsonBody
-import io.hss.bridgeApi.annotation.param.PathVariable
+import io.github.shiniseong.bridgeApi.annotation.method.Delete
+import io.github.shiniseong.bridgeApi.annotation.method.Get
+import io.github.shiniseong.bridgeApi.annotation.method.Patch
+import io.github.shiniseong.bridgeApi.annotation.method.Post
+import io.github.shiniseong.bridgeApi.annotation.param.JsonBody
+import io.github.shiniseong.bridgeApi.annotation.param.PathVariable
 
 class ProductController {
     @Get("/:id")

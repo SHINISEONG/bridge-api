@@ -1,7 +1,7 @@
 package errorHandler
 
 import dto.res.ApiCommonResDto
-import io.hss.bridgeApi.type.ErrorHandler
+import io.github.shiniseong.bridgeApi.type.ErrorHandler
 
 val universalExceptionHandler = ErrorHandler { throwable ->
     ApiCommonResDto(
