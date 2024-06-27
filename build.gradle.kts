@@ -1,12 +1,3 @@
-import java.util.*
-
-val localProperties = Properties().apply {
-    file("local.properties").inputStream().use { load(it) }
-}
-
-val authHeaderName: String = localProperties.getProperty("centralName")
-val authHeaderValue: String = localProperties.getProperty("centralValue")
-
 plugins {
     kotlin("jvm") version "1.9.23"
 }
