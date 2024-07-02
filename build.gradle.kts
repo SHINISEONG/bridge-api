@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.github.shiniseong.bridge-api"
-version = "1.0.6"
+version = "1.0.7"
 
 repositories {
     mavenCentral()
@@ -30,9 +30,9 @@ publishing {
         create<MavenPublication>("mavenKotlin") {
             from(components["kotlin"])
 
-            groupId = "io.github.shiniseong.bridge-api"
+            groupId = "io.github.shiniseong"
             artifactId = "bridge-api"
-            version = "1.0.6"
+            version = "1.0.7"
 
             pom {
                 name.set("Bridge API")
