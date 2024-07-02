@@ -16,6 +16,7 @@ import io.github.shiniseong.bridgeApi.type.RequestContext
 import io.github.shiniseong.bridgeApi.type.service.BaseService
 import io.github.shiniseong.bridgeApi.type.service.BridgeService
 import io.github.shiniseong.bridgeApi.type.service.ServiceDecorator
+import io.github.shiniseong.bridgeApi.type.service.decorator.defaultDecorators
 import io.github.shiniseong.bridgeApi.util.deserializeFromJson
 import io.github.shiniseong.bridgeApi.util.serializeToJson
 import org.slf4j.Logger
@@ -90,7 +91,7 @@ class BridgeRouter private constructor(
         private var logger: Logger = LoggerFactory.getLogger(BridgeRouter::class.java)
         private val controllers = mutableMapOf<String, Any>()
         private val errorHandlers: MutableList<ErrorHandler> = mutableListOf()
-        private val serviceDecorators: MutableList<ServiceDecorator> = mutableListOf()
+        private val serviceDecorators: MutableList<ServiceDecorator> = defaultDecorators
         private val routeTree = RouteNode()
 
         /**
