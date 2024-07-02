@@ -9,6 +9,7 @@ import io.github.shiniseong.bridgeApi.annotation.method.Delete
 import io.github.shiniseong.bridgeApi.annotation.method.Get
 import io.github.shiniseong.bridgeApi.annotation.method.Patch
 import io.github.shiniseong.bridgeApi.annotation.method.Post
+import io.github.shiniseong.bridgeApi.annotation.param.Header
 import io.github.shiniseong.bridgeApi.annotation.param.JsonBody
 import io.github.shiniseong.bridgeApi.annotation.param.PathVariable
 import io.github.shiniseong.bridgeApi.annotation.param.Query
@@ -78,5 +79,18 @@ class UserController {
             data = if (order == "ASC") data.sortedBy { it.id } else data.sortedByDescending { it.id }
         )
     }
+
+    @Post("/test/header")
+    fun headerTest(
+        @Header("X-Token") xToken: String,
+        @Header("X-Heart-Beat") xHeartBeat: Boolean,
+    ) = ApiCommonResDto(
+        status = 0,
+        message = "success",
+        data = mapOf(
+            "X-Token" to xToken,
+            "X-Heart-Beat" to xHeartBeat,
+        )
+    )
 
 }

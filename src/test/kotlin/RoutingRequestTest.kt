@@ -40,7 +40,9 @@ class RoutingRequestTest : StringSpec({
 
         "POST: /api/v1/users - create user" {
             router.routingRequest(
-                "api/v1/users", MethodType.POST, UserReqDto(
+                pathAndQueryString = "api/v1/users",
+                method = MethodType.POST,
+                jsonStringBody = UserReqDto(
                     name = "John",
                     age = 20,
                     type = 0
@@ -49,6 +51,7 @@ class RoutingRequestTest : StringSpec({
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":0}}
             """.trimIndent()
         }
+
 
         "DELETE: /api/v1/users/:id - delete user" {
             router.routingRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
@@ -61,8 +64,22 @@ class RoutingRequestTest : StringSpec({
                 {"name":"John","age":30,"type":"1"}
             """.trimIndent()
 
-            router.routingRequest("api/v1/users/1/user-type", MethodType.PATCH, body) shouldBe """
+            router.routingRequest(
+                pathAndQueryString = "api/v1/users/1/user-type",
+                method = MethodType.PATCH,
+                jsonStringBody = body
+            ) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":30,"type":1}}
+            """.trimIndent()
+        }
+
+        "POST: /api/v1/users/test/header - 헤더 테스트" {
+            router.routingRequest(
+                pathAndQueryString = "api/v1/users/test/header",
+                method = MethodType.POST,
+                headers = mapOf("X-Token" to "testToken", "X-Heart-Beat" to "true")
+            ) shouldBe """
+                {"status":0,"message":"success","data":{"X-Token":"testToken","X-Heart-Beat":true}}
             """.trimIndent()
         }
 
@@ -78,12 +95,17 @@ class RoutingRequestTest : StringSpec({
             """.trimIndent()
         }
 
+
         "POST: /api/v1/products/all - create products - 자료구조List Serialization & Deserialization 테스트" {
             val body = """
                 [{"name":"Apple","price":100,"stock":10},{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            router.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            router.routingRequest(
+                pathAndQueryString = "api/v1/products/all",
+                method = MethodType.POST,
+                jsonStringBody = body
+            ) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Apple","price":100,"stock":10},{"id":2,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
@@ -93,11 +115,15 @@ class RoutingRequestTest : StringSpec({
                 [{"name":"Banana","price":200,"stock":20}]
             """.trimIndent()
 
-            router.routingRequest("api/v1/products/all", MethodType.POST, body) shouldBe """
+            router.routingRequest(
+                pathAndQueryString = "api/v1/products/all",
+                method = MethodType.POST,
+                jsonStringBody = body
+            ) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
-
+        
         "DELETE: /api/v1/products/:id - delete product" {
             router.routingRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"delete success","data":{}}

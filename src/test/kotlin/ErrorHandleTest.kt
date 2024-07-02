@@ -19,13 +19,18 @@ class ErrorHandleTest : StringSpec({
 
 
     "GET: /api/v1/payments/:id - path variable id=1" {
-        val result = router.routingRequest("/api/v1/payments", MethodType.GET, "")
+        val result =
+            router.routingRequest(pathAndQueryString = "/api/v1/payments", method = MethodType.GET, jsonStringBody = "")
         result shouldBe """{"status":500,"message":"서버 에러가 발생했습니다. test throwable","data":null}"""
 
     }
 
     "POST: /api/v1/payments - create payment" {
-        val result = router.routingRequest("/api/v1/payments", MethodType.POST, "")
+        val result = router.routingRequest(
+            pathAndQueryString = "/api/v1/payments",
+            method = MethodType.POST,
+            jsonStringBody = ""
+        )
         result shouldBe """{"status":500,"message":"[ 카드 ] 결제에 실패했습니다.\n사용이 불가능한 카드입니다.","data":{"message":"사용이 불가능한 카드입니다.","errorType":"PAYMENT","errorCode":"PAYMENT_ERROR","time":"20240626"}}"""
     }
 })

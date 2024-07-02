@@ -208,9 +208,10 @@ class BridgeRouter private constructor(
         val apiCommonRequest = apiCommonRequestString.deserializeFromJson<ApiCommonRequest>(objectMapper)
         val pathAndQuery = apiCommonRequest.pathAndQuery
         val method = apiCommonRequest.method
+        val headers = apiCommonRequest.headers
         val bodyString = apiCommonRequest.body.serializeToJson(objectMapper)
 
-        return routingRequest(pathAndQuery, method, bodyString)
+        return routingRequest(pathAndQuery, method, headers, bodyString)
     }
 
     /**
@@ -220,34 +221,52 @@ class BridgeRouter private constructor(
      * @param jsonStringBody The body of the request as a JSON string.
      * @return The response as a JSON string.
      */
-    fun routingRequest(pathAndQueryString: String, method: MethodType, jsonStringBody: String = ""): String =
-        try {
-            val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
-                it[0] to (it.getOrNull(1) ?: "")
-            }
-            val queryParams = queryString.split("&").mapNotNull {
-                val (key, value) = it.split("=", limit = 2).let { it[0] to it.getOrNull(1) }
-                if (key.isNotEmpty() && value != null) key to value else null
-            }.toMap()
-
-            val pathSegments = path.split("/").filter { it.isNotEmpty() }
-            val (routeInfo, pathVariables) = findRoute(pathSegments, method)
-
-            if (routeInfo != null) {
-                val result =
-                    invokeFunction(routeInfo.controller, routeInfo.function, queryParams, jsonStringBody, pathVariables)
-                result?.serializeToJson(objectMapper) ?: "{}"
-            } else {
-                "404"
-            }
-        } catch (throwable: Throwable) {
-            val actualException = when (throwable) {
-                is InvocationTargetException -> throwable.targetException
-                else -> throwable
-            }
-            val results = errorHandlers.mapNotNull { it.handle(actualException) }
-            if (results.isEmpty()) "500" else results.first().serializeToJson(objectMapper)
+    fun routingRequest(
+        pathAndQueryString: String,
+        method: MethodType,
+        headers: Map<String, String> = emptyMap(),
+        jsonStringBody: String = "",
+    ): String = try {
+        // 경로와 쿼리 문자열을 분리합니다.
+        val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
+            it[0] to (it.getOrNull(1) ?: "")
         }
+        // 쿼리 문자열을 파싱하여 맵으로 변환합니다.
+        val queryParams = queryString.split("&").mapNotNull {
+            val (key, value) = it.split("=", limit = 2).let { it[0] to it.getOrNull(1) }
+            if (key.isNotEmpty() && value != null) key to value else null
+        }.toMap()
+
+        // 경로 세그먼트를 추출합니다.
+        val pathSegments = path.split("/").filter { it.isNotEmpty() }
+        val (routeInfo, pathVariables) = findRoute(pathSegments, method)
+
+        if (routeInfo != null) {
+            // 컨트롤러의 함수를 호출하여 결과를 얻습니다.
+            val result =
+                invokeFunction(
+                    controller = routeInfo.controller,
+                    function = routeInfo.function,
+                    queryParams = queryParams,
+                    pathVariables = pathVariables,
+                    headers = headers,
+                    jsonStringBody = jsonStringBody
+                )
+            result?.serializeToJson(objectMapper) ?: "{}"
+        } else {
+            "404"
+        }
+    } catch (throwable: Throwable) {
+        // 예외 발생 시 에러 핸들러를 통해 처리합니다.
+        val actualException = when (throwable) {
+            is InvocationTargetException -> throwable.targetException
+            else -> throwable
+        }
+        // 에러 핸들러를 통해 처리된 결과를 반환합니다.
+        val results = errorHandlers.mapNotNull { it.handle(actualException) }
+        if (results.isEmpty()) "500" else results.first()
+            .serializeToJson(objectMapper)
+    }
 
     /**
      * Finds the appropriate route in the route tree.
@@ -290,8 +309,9 @@ class BridgeRouter private constructor(
         controller: Any,
         function: KFunction<*>,
         queryParams: Map<String, String>,
-        jsonStringBody: String,
         pathVariables: Map<String, String>,
+        headers: Map<String, String>,
+        jsonStringBody: String,
     ): Any? {
         val args = function.valueParameters.map { param ->
             when {
@@ -303,8 +323,7 @@ class BridgeRouter private constructor(
                 }
 
                 param.findAnnotation<Header>() != null -> {
-                    // Header handling logic can be added here
-                    null
+                    convertParamValue(param.type.javaType, headers[param.findAnnotation<Header>()!!.key])
                 }
 
                 param.findAnnotation<Query>() != null -> {
