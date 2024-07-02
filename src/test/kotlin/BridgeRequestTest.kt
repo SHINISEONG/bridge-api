@@ -3,8 +3,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.ProductController
 import contorller.UserController
 import dto.req.UserReqDto
-import errorHandler.serviceExceptionHandler
-import errorHandler.universalExceptionHandler
 import io.github.shiniseong.bridgeApi.BridgeRouter
 import io.github.shiniseong.bridgeApi.enums.MethodType
 import io.github.shiniseong.bridgeApi.type.ApiCommonRequest
@@ -20,12 +18,11 @@ class BridgeRequestTest : StringSpec({
     val objectMapper = ObjectMapper().findAndRegisterModules()
         .registerModules(JacksonCustomSerializeModule())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
     val router = BridgeRouter.builder()
         .setSerializer(objectMapper)
         .registerController("api/v1/users", userController)
         .registerController("api/v1/products", productController)
-        .registerErrorHandler(serviceExceptionHandler)
-        .registerErrorHandler(universalExceptionHandler)
         .build()
 
     "GET: /api/v1/users/:id - path variable id=1" {

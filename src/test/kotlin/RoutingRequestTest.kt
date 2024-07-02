@@ -5,7 +5,6 @@ import contorller.UserController
 import dto.req.UserReqDto
 import io.github.shiniseong.bridgeApi.BridgeRouter
 import io.github.shiniseong.bridgeApi.enums.MethodType
-import io.github.shiniseong.bridgeApi.util.serializeToJson
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -24,7 +23,6 @@ class RoutingRequestTest : StringSpec({
         .registerController("api/v1/products", productController)
         .build()
 
-
     "routingRequest" should {
         "GET: /api/v1/users/:id - path variable id=1" {
             router.routingRequest("api/v1/users/1", MethodType.GET) shouldBe """
@@ -39,19 +37,19 @@ class RoutingRequestTest : StringSpec({
         }
 
         "POST: /api/v1/users - create user" {
+            val userDto = UserReqDto(
+                name = "John",
+                age = 20,
+                type = 0
+            )
             router.routingRequest(
                 pathAndQueryString = "api/v1/users",
                 method = MethodType.POST,
-                jsonStringBody = UserReqDto(
-                    name = "John",
-                    age = 20,
-                    type = 0
-                ).serializeToJson(objectMapper)
+                body = userDto
             ) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":20,"type":0}}
             """.trimIndent()
         }
-
 
         "DELETE: /api/v1/users/:id - delete user" {
             router.routingRequest("api/v1/users/1", MethodType.DELETE) shouldBe """
@@ -60,14 +58,11 @@ class RoutingRequestTest : StringSpec({
         }
 
         "PATCH: /api/v1/users/:id/user-type - update user age - ENUM 타입 테스트" {
-            val body = """
-                {"name":"John","age":30,"type":"1"}
-            """.trimIndent()
-
+            val body = mapOf("name" to "John", "age" to 30, "type" to "1")
             router.routingRequest(
                 pathAndQueryString = "api/v1/users/1/user-type",
                 method = MethodType.PATCH,
-                jsonStringBody = body
+                body = body
             ) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"John","age":30,"type":1}}
             """.trimIndent()
@@ -90,40 +85,43 @@ class RoutingRequestTest : StringSpec({
         }
 
         "POST: /api/v1/products - create product" {
-            router.routingRequest("api/v1/products", MethodType.POST) shouldBe """
+            val productDto = mapOf("name" to "Apple", "price" to 100, "stock" to 10)
+            router.routingRequest(
+                pathAndQueryString = "api/v1/products",
+                method = MethodType.POST,
+                body = productDto
+            ) shouldBe """
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":10}}
             """.trimIndent()
         }
 
-
         "POST: /api/v1/products/all - create products - 자료구조List Serialization & Deserialization 테스트" {
-            val body = """
-                [{"name":"Apple","price":100,"stock":10},{"name":"Banana","price":200,"stock":20}]
-            """.trimIndent()
-
+            val body = listOf(
+                mapOf("name" to "Apple", "price" to 100, "stock" to 10),
+                mapOf("name" to "Banana", "price" to 200, "stock" to 20)
+            )
             router.routingRequest(
                 pathAndQueryString = "api/v1/products/all",
                 method = MethodType.POST,
-                jsonStringBody = body
+                body = body
             ) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Apple","price":100,"stock":10},{"id":2,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
 
         "POST: /api/v1/products/all - create products - 배열 안 단일 객체 테스트" {
-            val body = """
-                [{"name":"Banana","price":200,"stock":20}]
-            """.trimIndent()
-
+            val body = listOf(
+                mapOf("name" to "Banana", "price" to 200, "stock" to 20)
+            )
             router.routingRequest(
                 pathAndQueryString = "api/v1/products/all",
                 method = MethodType.POST,
-                jsonStringBody = body
+                body = body
             ) shouldBe """
                 {"status":0,"message":"success","data":[{"id":1,"name":"Banana","price":200,"stock":20}]}
             """.trimIndent()
         }
-        
+
         "DELETE: /api/v1/products/:id - delete product" {
             router.routingRequest("api/v1/products/1", MethodType.DELETE) shouldBe """
                 {"status":0,"message":"delete success","data":{}}

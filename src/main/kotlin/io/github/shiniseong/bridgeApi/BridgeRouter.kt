@@ -12,6 +12,10 @@ import io.github.shiniseong.bridgeApi.enums.MethodType
 import io.github.shiniseong.bridgeApi.enums.toMethodType
 import io.github.shiniseong.bridgeApi.type.ApiCommonRequest
 import io.github.shiniseong.bridgeApi.type.ErrorHandler
+import io.github.shiniseong.bridgeApi.type.RequestContext
+import io.github.shiniseong.bridgeApi.type.service.BaseService
+import io.github.shiniseong.bridgeApi.type.service.BridgeService
+import io.github.shiniseong.bridgeApi.type.service.ServiceDecorator
 import io.github.shiniseong.bridgeApi.util.deserializeFromJson
 import io.github.shiniseong.bridgeApi.util.serializeToJson
 import org.slf4j.Logger
@@ -61,6 +65,7 @@ class BridgeRouter private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
     private val logger: Logger,
     private val routeTree: RouteNode = RouteNode(),
+    private val decoratedService: BridgeService,
     private val errorHandlers: List<ErrorHandler> = emptyList(),
 ) {
     init {
@@ -85,6 +90,7 @@ class BridgeRouter private constructor(
         private var logger: Logger = LoggerFactory.getLogger(BridgeRouter::class.java)
         private val controllers = mutableMapOf<String, Any>()
         private val errorHandlers: MutableList<ErrorHandler> = mutableListOf()
+        private val serviceDecorators: MutableList<ServiceDecorator> = mutableListOf()
         private val routeTree = RouteNode()
 
         /**
@@ -138,6 +144,23 @@ class BridgeRouter private constructor(
             return this
         }
 
+        fun registerDecorator(service: ServiceDecorator): Builder {
+            serviceDecorators.add(service)
+            logger.debug("Service registered: {}", service)
+            return this
+        }
+
+        fun registerAllDecorators(services: List<ServiceDecorator>): Builder {
+            this.serviceDecorators.addAll(services)
+            logger.debug("Services registered: {}", services)
+            return this
+        }
+
+        private fun buildDecoratedService(): BridgeService {
+            return serviceDecorators
+                .foldRight(BaseService(objectMapper) as BridgeService) { service, acc -> service.wrap(acc) }
+        }
+
         /**
          * Builds and returns a configured BridgeRouter instance.
          * @return The configured BridgeRouter instance.
@@ -148,6 +171,7 @@ class BridgeRouter private constructor(
                 objectMapper = objectMapper,
                 logger = logger,
                 routeTree = routeTree,
+                decoratedService = buildDecoratedService(),
                 errorHandlers = errorHandlers
             )
         }
@@ -229,9 +253,9 @@ class BridgeRouter private constructor(
         val pathAndQuery = apiCommonRequest.pathAndQuery
         val method = apiCommonRequest.method
         val headers = apiCommonRequest.headers
-        val bodyString = apiCommonRequest.body.serializeToJson(objectMapper)
+        val body = apiCommonRequest.body
 
-        return routingRequest(pathAndQuery, method, headers, bodyString)
+        return routingRequest(pathAndQuery, method, headers, body)
     }
 
     /**
@@ -245,9 +269,9 @@ class BridgeRouter private constructor(
         pathAndQueryString: String,
         method: MethodType,
         headers: Map<String, String> = emptyMap(),
-        jsonStringBody: String = "",
+        body: Any? = null,
     ): String = try {
-        logger.debug("Routing request: {}, {}, {}, {}", pathAndQueryString, method, headers, jsonStringBody)
+        logger.debug("Routing request: {}, {}, {}, {}", pathAndQueryString, method, headers, body)
 
         val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
             it[0] to (it.getOrNull(1) ?: "")
@@ -263,18 +287,19 @@ class BridgeRouter private constructor(
         val (routeInfo, pathVariables) = findRoute(pathSegments, method)
 
         if (routeInfo != null) {
-
-            val result =
-                invokeFunction(
-                    controller = routeInfo.controller,
-                    function = routeInfo.function,
-                    queryParams = queryParams,
-                    pathVariables = pathVariables,
-                    headers = headers,
-                    jsonStringBody = jsonStringBody
-                )
+            val requestContext = RequestContext(
+                segments = pathSegments,
+                method = method,
+                body = body,
+                headers = headers,
+                pathVariables = pathVariables,
+                queryParameters = queryParams,
+                controller = routeInfo.controller,
+                function = routeInfo.function
+            )
+            val response = decoratedService.serve(requestContext).body
             logger.debug("Routing success.")
-            result?.serializeToJson(objectMapper) ?: "{}"
+            response?.serializeToJson(objectMapper) ?: "{}"
         } else {
             logger.warn("Route not found.")
             "404"

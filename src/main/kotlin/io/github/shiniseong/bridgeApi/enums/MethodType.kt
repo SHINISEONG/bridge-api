@@ -4,6 +4,13 @@ import io.github.shiniseong.bridgeApi.annotation.method.*
 
 enum class MethodType {
     GET, POST, PATCH, DELETE, PUT
+    ;
+
+    fun isGet() = this == GET
+    fun isPost() = this == POST
+    fun isPatch() = this == PATCH
+    fun isDelete() = this == DELETE
+    fun isPut() = this == PUT
 }
 
 private typealias HttpMethodAnnotation = Annotation
