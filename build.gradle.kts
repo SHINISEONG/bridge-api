@@ -1,10 +1,14 @@
+private val _group = "io.github.shiniseong.bridge-api"
+private val _version = "1.1.0"
+private val _name = "bridge-api"
+
 plugins {
     kotlin("jvm") version "1.9.23"
     `maven-publish`
 }
 
-group = "io.github.shiniseong.bridge-api"
-version = "1.0.8"
+group = _group
+version = _version
 
 repositories {
     mavenCentral()
@@ -33,9 +37,9 @@ publishing {
         create<MavenPublication>("mavenKotlin") {
             from(components["kotlin"])
 
-            groupId = project.group.toString()
-            artifactId = project.name
-            version = project.version.toString()
+            groupId = _group
+            artifactId = _name
+            version = _version
 
             pom {
                 name.set("Bridge API")
