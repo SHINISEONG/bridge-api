@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.23"
+    `maven-publish`
 }
 
 group = "io.github.shiniseong.bridge-api"
