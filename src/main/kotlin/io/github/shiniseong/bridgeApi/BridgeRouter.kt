@@ -14,6 +14,8 @@ import io.github.shiniseong.bridgeApi.type.ApiCommonRequest
 import io.github.shiniseong.bridgeApi.type.ErrorHandler
 import io.github.shiniseong.bridgeApi.util.deserializeFromJson
 import io.github.shiniseong.bridgeApi.util.serializeToJson
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
@@ -57,9 +59,14 @@ private data class RouteNode(
  */
 class BridgeRouter private constructor(
     private val objectMapper: ObjectMapper = jacksonObjectMapper(),
+    private val logger: Logger,
     private val routeTree: RouteNode = RouteNode(),
     private val errorHandlers: List<ErrorHandler> = emptyList(),
 ) {
+    init {
+        logger.debug("BridgeRouter initialized.")
+    }
+
     companion object {
         /**
          * Creates a new Builder instance for configuring and building a BridgeRouter.
@@ -75,6 +82,7 @@ class BridgeRouter private constructor(
      */
     class Builder {
         private var objectMapper: ObjectMapper = jacksonObjectMapper()
+        private var logger: Logger = LoggerFactory.getLogger(BridgeRouter::class.java)
         private val controllers = mutableMapOf<String, Any>()
         private val errorHandlers: MutableList<ErrorHandler> = mutableListOf()
         private val routeTree = RouteNode()
@@ -86,6 +94,13 @@ class BridgeRouter private constructor(
          */
         fun setSerializer(objectMapper: ObjectMapper): Builder {
             this.objectMapper = objectMapper
+            logger.debug("ObjectMapper set: {}", objectMapper)
+            return this
+        }
+
+        fun setLogger(logger: Logger): Builder {
+            this.logger = logger
+            logger.debug("Logger set: {}", logger)
             return this
         }
 
@@ -97,6 +112,7 @@ class BridgeRouter private constructor(
          */
         fun registerController(path: String, controller: Any): Builder {
             controllers[path] = controller
+            logger.debug("Controller registered: {}, {}", path, controller)
             return this
         }
 
@@ -107,6 +123,7 @@ class BridgeRouter private constructor(
          */
         fun registerErrorHandler(errorHandler: ErrorHandler): Builder {
             errorHandlers.add(errorHandler)
+            logger.debug("ErrorHandler registered: {}", errorHandler)
             return this
         }
 
@@ -117,6 +134,7 @@ class BridgeRouter private constructor(
          */
         fun registerAllErrorHandlers(errorHandlers: List<ErrorHandler>): Builder {
             this.errorHandlers.addAll(errorHandlers)
+            logger.debug("ErrorHandlers registered: {}", errorHandlers)
             return this
         }
 
@@ -128,6 +146,7 @@ class BridgeRouter private constructor(
             buildRoutes()
             return BridgeRouter(
                 objectMapper = objectMapper,
+                logger = logger,
                 routeTree = routeTree,
                 errorHandlers = errorHandlers
             )
@@ -168,6 +187,7 @@ class BridgeRouter private constructor(
                     }
                 }
             }
+            logger.debug("Routes built.")
         }
 
         /**
@@ -227,22 +247,23 @@ class BridgeRouter private constructor(
         headers: Map<String, String> = emptyMap(),
         jsonStringBody: String = "",
     ): String = try {
-        // 경로와 쿼리 문자열을 분리합니다.
+        logger.debug("Routing request: {}, {}, {}, {}", pathAndQueryString, method, headers, jsonStringBody)
+
         val (path, queryString) = pathAndQueryString.split("?", limit = 2).let {
             it[0] to (it.getOrNull(1) ?: "")
         }
-        // 쿼리 문자열을 파싱하여 맵으로 변환합니다.
+
         val queryParams = queryString.split("&").mapNotNull {
             val (key, value) = it.split("=", limit = 2).let { it[0] to it.getOrNull(1) }
             if (key.isNotEmpty() && value != null) key to value else null
         }.toMap()
 
-        // 경로 세그먼트를 추출합니다.
+
         val pathSegments = path.split("/").filter { it.isNotEmpty() }
         val (routeInfo, pathVariables) = findRoute(pathSegments, method)
 
         if (routeInfo != null) {
-            // 컨트롤러의 함수를 호출하여 결과를 얻습니다.
+
             val result =
                 invokeFunction(
                     controller = routeInfo.controller,
@@ -252,8 +273,10 @@ class BridgeRouter private constructor(
                     headers = headers,
                     jsonStringBody = jsonStringBody
                 )
+            logger.debug("Routing success.")
             result?.serializeToJson(objectMapper) ?: "{}"
         } else {
+            logger.warn("Route not found.")
             "404"
         }
     } catch (throwable: Throwable) {
@@ -262,10 +285,10 @@ class BridgeRouter private constructor(
             is InvocationTargetException -> throwable.targetException
             else -> throwable
         }
+        logger.error("Routing error: ${actualException.message}", actualException)
         // 에러 핸들러를 통해 처리된 결과를 반환합니다.
         val results = errorHandlers.mapNotNull { it.handle(actualException) }
-        if (results.isEmpty()) "500" else results.first()
-            .serializeToJson(objectMapper)
+        if (results.isEmpty()) "500" else results.first().serializeToJson(objectMapper)
     }
 
     /**
