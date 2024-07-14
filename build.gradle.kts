@@ -1,5 +1,5 @@
 private val _group = "io.github.shiniseong.bridge-api"
-private val _version = "1.1.2"
+private val _version = "1.1.3"
 private val _name = "bridge-api"
 
 
