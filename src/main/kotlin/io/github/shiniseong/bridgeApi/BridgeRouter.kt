@@ -249,7 +249,7 @@ class BridgeRouter private constructor(
      * @param apiCommonRequestString The API request as a JSON string.
      * @return The response as a JSON string.
      */
-    fun bridgeRequest(apiCommonRequestString: String): String {
+    suspend fun bridgeRequest(apiCommonRequestString: String): String {
         val apiCommonRequest = apiCommonRequestString.deserializeFromJson<ApiCommonRequest>(objectMapper)
         val pathAndQuery = apiCommonRequest.pathAndQuery
         val method = apiCommonRequest.method
@@ -266,7 +266,7 @@ class BridgeRouter private constructor(
      * @param jsonStringBody The body of the request as a JSON string.
      * @return The response as a JSON string.
      */
-    fun routingRequest(
+    suspend fun routingRequest(
         pathAndQueryString: String,
         method: MethodType,
         headers: Map<String, String> = emptyMap(),

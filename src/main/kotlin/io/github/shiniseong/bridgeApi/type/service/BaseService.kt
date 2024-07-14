@@ -9,14 +9,15 @@ import io.github.shiniseong.bridgeApi.annotation.param.Query
 import io.github.shiniseong.bridgeApi.type.BridgeResponse
 import io.github.shiniseong.bridgeApi.type.RequestContext
 import io.github.shiniseong.bridgeApi.util.serializeToJson
+import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.javaType
 
 internal class BaseService(private val objectMapper: ObjectMapper) : BridgeService {
-    override fun serve(ctx: RequestContext): BridgeResponse = BridgeResponse(invokeFunction(ctx))
+    override suspend fun serve(ctx: RequestContext): BridgeResponse = BridgeResponse(invokeFunction(ctx))
 
-    private fun invokeFunction(
+    private suspend fun invokeFunction(
         ctx: RequestContext,
     ): Any? {
         // 함수의 파라미터를 처리합니다.
@@ -48,7 +49,11 @@ internal class BaseService(private val objectMapper: ObjectMapper) : BridgeServi
             }
         }.toTypedArray()
         // 함수를 호출하여 결과를 반환합니다.
-        return ctx.function.call(ctx.controller, *args)
+        val function = ctx.function
+        return if(function.isSuspend)
+                ctx.function.callSuspend(ctx.controller, *args)
+            else
+                ctx.function.call(ctx.controller, *args)
     }
 
     private fun convertParamValue(paramType: java.lang.reflect.Type, paramValue: String?): Any? = when (paramType) {

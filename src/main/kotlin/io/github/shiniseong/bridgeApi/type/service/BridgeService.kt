@@ -4,7 +4,7 @@ import io.github.shiniseong.bridgeApi.type.BridgeResponse
 import io.github.shiniseong.bridgeApi.type.RequestContext
 
 interface BridgeService {
-    fun serve(ctx: RequestContext): BridgeResponse
+    suspend fun serve(ctx: RequestContext): BridgeResponse
 }
 
 abstract class ServiceDecorator : BridgeService {
