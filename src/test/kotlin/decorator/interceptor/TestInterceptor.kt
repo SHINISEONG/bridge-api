@@ -5,7 +5,7 @@ import io.github.shiniseong.bridgeApi.type.RequestContext
 import io.github.shiniseong.bridgeApi.type.service.ServiceDecorator
 
 class TestInterceptor : ServiceDecorator() {
-    override fun serve(ctx: RequestContext): BridgeResponse {
+    override suspend fun serve(ctx: RequestContext): BridgeResponse {
         println("Before TestInterceptor1")
         if ("test" in ctx.segments && "interceptor" in ctx.segments && ctx.method.isGet()) {
             return BridgeResponse("Intercepted by TestInterceptor1 and not reach controller")
@@ -17,7 +17,7 @@ class TestInterceptor : ServiceDecorator() {
 }
 
 class TestInterceptor2 : ServiceDecorator() {
-    override fun serve(ctx: RequestContext): BridgeResponse {
+    override suspend fun serve(ctx: RequestContext): BridgeResponse {
         println("Before TestInterceptor2")
         if ("test" in ctx.segments && "interceptor" in ctx.segments && ctx.method.isPost()) {
             return BridgeResponse("Intercepted by TestInterceptor2 and not reach controller")
@@ -29,7 +29,7 @@ class TestInterceptor2 : ServiceDecorator() {
 }
 
 class TestInterceptor3 : ServiceDecorator() {
-    override fun serve(ctx: RequestContext): BridgeResponse {
+    override suspend fun serve(ctx: RequestContext): BridgeResponse {
         println("Before TestInterceptor3")
         if ("test" in ctx.segments && "interceptor" in ctx.segments && ctx.method.isPatch()) {
             return BridgeResponse("Intercepted by TestInterceptor3 and not reach controller")
@@ -41,7 +41,7 @@ class TestInterceptor3 : ServiceDecorator() {
 }
 
 class AuthTestInterceptor : ServiceDecorator() {
-    override fun serve(ctx: RequestContext): BridgeResponse {
+    override suspend fun serve(ctx: RequestContext): BridgeResponse {
         println("Before AuthTestInterceptor")
         if (ctx.headers["Authorization"] != "Example Bearer token") println("Unauthorized")
         val response = unwrap().serve(ctx)

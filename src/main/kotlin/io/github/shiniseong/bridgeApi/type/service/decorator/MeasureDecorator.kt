@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 class MeasureDecorator : ServiceDecorator() {
     private val logger: Logger = LoggerFactory.getLogger(MeasureDecorator::class.java)
 
-    override fun serve(ctx: RequestContext): BridgeResponse {
+    override suspend fun serve(ctx: RequestContext): BridgeResponse {
         val start = System.currentTimeMillis()
         val response = unwrap().serve(ctx)
         val end = System.currentTimeMillis()
