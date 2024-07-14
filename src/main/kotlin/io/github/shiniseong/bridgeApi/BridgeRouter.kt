@@ -306,13 +306,11 @@ class BridgeRouter private constructor(
             "404"
         }
     } catch (throwable: Throwable) {
-        // 예외 발생 시 에러 핸들러를 통해 처리합니다.
         val actualException = when (throwable) {
             is InvocationTargetException -> throwable.targetException
             else -> throwable
         }
         logger.error("Routing error: ${actualException.message}", actualException)
-        // 에러 핸들러를 통해 처리된 결과를 반환합니다.
         val results = errorHandlers.mapNotNull { it.handle(actualException) }
         if (results.isEmpty()) "500" else results.first().serializeToJson(objectMapper)
     }

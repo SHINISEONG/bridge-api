@@ -3,6 +3,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import contorller.InterceptorTestController
 import contorller.ProductController
 import contorller.UserController
+import decorator.interceptor.AuthTestInterceptor
 import decorator.interceptor.TestInterceptor
 import decorator.interceptor.TestInterceptor2
 import decorator.interceptor.TestInterceptor3
@@ -29,6 +30,7 @@ class InterceptorTest : StringSpec({
             registerDecorator(TestInterceptor())
             registerDecorator(TestInterceptor2())
             registerDecorator(TestInterceptor3())
+            registerDecorator(AuthTestInterceptor())
         }.build()
 
     "GET: /api/v1/users/:id - path variable id=1" {

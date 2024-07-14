@@ -1,142 +1,230 @@
 import {ApiCommonRequest} from "./type/ApiCommonRequest";
 import {MethodType} from "./enums/MethodType";
 
-/**
- * Calls an Android function through the Bridge API.
- * @template ReqT The request type.
- * @template ResT The response type.
- * @param apiCommonRequest The API common request object.
- * @returns The response from the Android function.
- */
-const callAndroidFunction = async <ReqT, ResT>(apiCommonRequest: ApiCommonRequest<ReqT>) => {
-    const jsonString = JSON.stringify(apiCommonRequest);
-    const result: string = await window.BridgeApi.bridgeRequest(jsonString);
-    const response: ResT = JSON.parse(result);
+type PromiseMapType = Map<string, { resolve: (result: any) => void; reject: (reason?: any) => void }>;
+const promiseMap: PromiseMapType = new Map();
 
-    return response;
+/**
+ * Generates a unique callback ID using the current timestamp and a random number.
+ *
+ * @returns {string} Unique callback ID.
+ */
+const generateUniqueCallbackId = (): string => {
+    // Get the current time in milliseconds and convert to a hexadecimal string
+    const timestamp = Date.now().toString(16);
+    // Generate a random number and convert to a hexadecimal string
+    const random = Math.floor(Math.random() * 0xffff).toString(16);
+    // Combine the two values to create a unique ID
+    return `promise_${timestamp}_${random}`;
 }
 
 /**
- * BridgeApi class for making HTTP requests through the Bridge API.
+ * Calls the Bridge API function and returns a promise.
+ *
+ * @param {ApiCommonRequest<ReqT>} apiCommonRequest - The API request object.
+ * @param {number} [timeout=5000] - The timeout period in milliseconds.
+ * @returns {Promise<ResT>} - A promise that resolves with the API response.
  */
+const callBridgeApiFunction = async <ReqT, ResT>(
+    apiCommonRequest: ApiCommonRequest<ReqT>,
+    timeout: number = 5000,
+): Promise<ResT> => {
+    const promiseId = generateUniqueCallbackId();
+
+    return new Promise<ResT>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            promiseMap.delete(promiseId);
+            reject(new Error(`Timeout after ${timeout}ms for request: ${apiCommonRequest.body}`));
+        }, timeout);
+
+        try {
+            const jsonString = JSON.stringify(apiCommonRequest);
+            window.BridgeApi.bridgeRequest(promiseId, jsonString);
+            promiseMap.set(promiseId, {
+                resolve: (result: ResT) => {
+                    clearTimeout(timeoutId);
+                    resolve(result);
+                },
+                reject: (e: any) => {
+                    clearTimeout(timeoutId);
+                    reject(e);
+                }
+            });
+        } catch (error) {
+            clearTimeout(timeoutId);
+            promiseMap.delete(promiseId);
+            console.error(`Error calling bridge api(request: ${apiCommonRequest}):`, error);
+            reject(new Error(`Failed to call bridge api(request: ${apiCommonRequest.body})`));
+        }
+    });
+}
+
+/**
+ * Resolves the asynchronous promise with the given ID and result.
+ *
+ * @param {string} id - The unique callback ID.
+ * @param {any} result - The result to resolve the promise with.
+ */
+window.resolveAsyncPromise = (id: string, result: any) => {
+    if (!promiseMap.has(id)) {
+        console.warn(`Promise with ID ${id} not found in promiseMap on executing callAndroidAsyncBridgeFunction`);
+        return;
+    }
+    const {resolve} = promiseMap.get(id)!;
+    const resultJson = JSON.parse(result);
+    resolve(resultJson);
+    promiseMap.delete(id);
+};
+
+/**
+ * Rejects the asynchronous promise with the given ID and error.
+ *
+ * @param {string} id - The unique callback ID.
+ * @param {any} error - The error to reject the promise with.
+ */
+window.rejectAsyncPromise = (id: string, error: any) => {
+    if (!promiseMap.has(id)) {
+        console.warn(`Promise with ID ${id} not found in promiseMap on executing callAndroidAsyncBridgeFunction`);
+        return;
+    }
+    const {reject} = promiseMap.get(id)!;
+    reject(JSON.parse(error));
+    promiseMap.delete(id);
+};
+
+interface BridgeApiConfig {
+    headers: { [key: string]: string },
+    timeout: number,
+}
+
 export class BridgeApi {
-    /**
-     * Makes a GET request.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.get<ResponseType>("/path?query=param");
-     */
-    static get<ResT>(pathAndQuery: string): Promise<ResT>;
-    /**
-     * Makes a GET request with a request body.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @param body The request body.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.get<ResponseType>("/path?query=param", requestBody);
-     */
-    static get<ResT>(pathAndQuery: string, body: any): Promise<ResT>;
+    config: BridgeApiConfig
 
-    static get<ResT>(pathAndQuery: string, body?: any): Promise<ResT> {
-        return callAndroidFunction({pathAndQuery: pathAndQuery, method: MethodType.GET, body: body ?? ''});
+    private constructor(config?: BridgeApiConfig) {
+        this.config = config ?? {headers: {}, timeout: 5000};
     }
 
     /**
-     * Makes a POST request.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.post<ResponseType>("/path");
+     * Creates a new instance of BridgeApi.
+     *
+     * @param {BridgeApiConfig} [config] - Optional configuration for the API.
+     * @returns {BridgeApi} - A new instance of BridgeApi.
      */
-    static post<ResT>(pathAndQuery: string): Promise<ResT>;
-    /**
-     * Makes a POST request with a request body.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @param body The request body.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.post<ResponseType>("/path", requestBody);
-     */
-    static post<ResT>(pathAndQuery: string, body: any): Promise<ResT>;
-
-    static post<ResT>(pathAndQuery: string, body?: any): Promise<ResT> {
-        return callAndroidFunction({pathAndQuery: pathAndQuery, method: MethodType.POST, body: body ?? ''});
+    static create(config?: BridgeApiConfig): BridgeApi {
+        return new BridgeApi(config);
     }
 
     /**
-     * Makes a PUT request.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.put<ResponseType>("/path");
+     * Sends a GET request to the specified path and query.
+     *
+     * @param {string} pathAndQuery - The path and query string for the GET request.
+     * @param {any} [body=''] - The body of the request.
+     * @param {number} [timeout=this.config.timeout] - The timeout period in milliseconds.
+     * @returns {Promise<ResT>} - A promise that resolves with the response.
      */
-    static put<ResT>(pathAndQuery: string): Promise<ResT>;
-    /**
-     * Makes a PUT request with a request body.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @param body The request body.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.put<ResponseType>("/path", requestBody);
-     */
-    static put<ResT>(pathAndQuery: string, body: any): Promise<ResT>;
-
-    static put<ResT>(pathAndQuery: string, body?: any): Promise<ResT> {
-        return callAndroidFunction({pathAndQuery: pathAndQuery, method: MethodType.PUT, body: body ?? ''});
+    get<ResT>(
+        pathAndQuery: string, body: any = '',
+        timeout: number = this.config.timeout
+    ): Promise<ResT> {
+        return callBridgeApiFunction({
+                pathAndQuery: pathAndQuery,
+                method: MethodType.GET,
+                headers: this.config.headers,
+                body: body
+            },
+            timeout ?? this.config.timeout,
+        )
     }
 
     /**
-     * Makes a DELETE request.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.delete<ResponseType>("/path");
+     * Sends a POST request to the specified path and query.
+     *
+     * @param {string} pathAndQuery - The path and query string for the POST request.
+     * @param {any} [body=''] - The body of the request.
+     * @param {number} [timeout=this.config.timeout] - The timeout period in milliseconds.
+     * @returns {Promise<ResT>} - A promise that resolves with the response.
      */
-    static delete<ResT>(pathAndQuery: string): Promise<ResT>;
-    /**
-     * Makes a DELETE request with a request body.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @param body The request body.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.delete<ResponseType>("/path", requestBody);
-     */
-    static delete<ResT>(pathAndQuery: string, body: any): Promise<ResT>;
-
-    static delete<ResT>(pathAndQuery: string, body?: any): Promise<ResT> {
-        return callAndroidFunction({pathAndQuery: pathAndQuery, method: MethodType.DELETE, body: body ?? ''});
+    post<ResT>(
+        pathAndQuery: string,
+        body: any = '',
+        timeout: number = this.config.timeout
+    ): Promise<ResT> {
+        return callBridgeApiFunction({
+                pathAndQuery: pathAndQuery,
+                method: MethodType.POST,
+                headers: this.config.headers,
+                body: body,
+            },
+            timeout,
+        )
     }
 
     /**
-     * Makes a PATCH request.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.patch<ResponseType>("/path");
+     * Sends a PUT request to the specified path and query.
+     *
+     * @param {string} pathAndQuery - The path and query string for the PUT request.
+     * @param {any} [body=''] - The body of the request.
+     * @param {number} [timeout=this.config.timeout] - The timeout period in milliseconds.
+     * @returns {Promise<{ id: string, result: ResT }>} - A promise that resolves with the response.
      */
-    static patch<ResT>(pathAndQuery: string): Promise<ResT>;
-    /**
-     * Makes a PATCH request with a request body.
-     * @template ResT The response type.
-     * @param pathAndQuery The path and query string.
-     * @param body The request body.
-     * @returns A promise that resolves to the response.
-     * @example
-     * const response = await BridgeApi.patch<ResponseType>("/path", requestBody);
-     */
-    static patch<ResT>(pathAndQuery: string, body: any): Promise<ResT>;
+    put<ResT>(
+        pathAndQuery: string,
+        body: any = '',
+        timeout: number = this.config.timeout
+    ): Promise<{ id: string, result: ResT }> {
+        return callBridgeApiFunction({
+                pathAndQuery: pathAndQuery,
+                method: MethodType.PUT,
+                headers: this.config.headers,
+                body: body
+            },
+            timeout
+        )
+    }
 
-    static patch<ResT>(pathAndQuery: string, body?: any): Promise<ResT> {
-        return callAndroidFunction({pathAndQuery: pathAndQuery, method: MethodType.PATCH, body: body ?? ''});
+    /**
+     * Sends a DELETE request to the specified path and query.
+     *
+     * @param {string} pathAndQuery - The path and query string for the DELETE request.
+     * @param {any} [body=''] - The body of the request.
+     * @param {number} [timeout=this.config.timeout] - The timeout period in milliseconds.
+     * @returns {Promise<{ id: string, result: ResT }>} - A promise that resolves with the response.
+     */
+    delete<ResT>(
+        pathAndQuery: string,
+        body: any = '',
+        timeout: number = this.config.timeout
+    ): Promise<{ id: string, result: ResT }> {
+        return callBridgeApiFunction({
+                pathAndQuery: pathAndQuery,
+                method: MethodType.DELETE,
+                headers: this.config.headers,
+                body: body
+            },
+            timeout
+        )
+    }
+
+    /**
+     * Sends a PATCH request to the specified path and query.
+     *
+     * @param {string} pathAndQuery - The path and query string for the PATCH request.
+     * @param {any} [body=''] - The body of the request.
+     * @param {number} [timeout=this.config.timeout] - The timeout period in milliseconds.
+     * @returns {Promise<{ id: string, result: ResT }>} - A promise that resolves with the response.
+     */
+    patch<ResT>(
+        pathAndQuery: string,
+        body: any = '',
+        timeout: number = this.config.timeout
+    ): Promise<{ id: string, result: ResT }> {
+        return callBridgeApiFunction({
+                pathAndQuery: pathAndQuery,
+                method: MethodType.PATCH,
+                headers: this.config.headers,
+                body: body
+            },
+            timeout
+        )
     }
 }

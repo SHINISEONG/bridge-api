@@ -4,4 +4,6 @@ interface Window {
         // eslint-disable-next-line @typescript-eslint/ban-types
         bridgeRequest: Function
     }
+    resolveAsyncPromise: Function,
+    rejectAsyncPromise: Function
 }

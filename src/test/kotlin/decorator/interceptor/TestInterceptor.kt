@@ -39,3 +39,13 @@ class TestInterceptor3 : ServiceDecorator() {
         return response
     }
 }
+
+class AuthTestInterceptor : ServiceDecorator() {
+    override fun serve(ctx: RequestContext): BridgeResponse {
+        println("Before AuthTestInterceptor")
+        if (ctx.headers["Authorization"] != "Example Bearer token") println("Unauthorized")
+        val response = unwrap().serve(ctx)
+        println("After AuthTestInterceptor")
+        return response
+    }
+}
