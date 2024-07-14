@@ -18,7 +18,7 @@ BridgeApi is a sophisticated library that facilitates seamless communication bet
 1. Add the BridgeApi dependency to your project:
 
 ```kotlin
-implementation("io.github.shiniseong:bridge-api:1.0.0")
+implementation("io.github.shiniseong:bridge-api:1.1.6")
 ```
 
 2. Set up your router in your main activity:
