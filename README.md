@@ -247,11 +247,6 @@ const customBridgeApi = BridgeApi.create({
     },
 })
 ```
-
-## Contributing
-
-We welcome contributions to enhance BridgeApi. Please refer to our [Contributing Guide](CONTRIBUTING.md) for detailed information on how to get involved.
-
 ## License
 
 This project is licensed under the MIT License. For full details, please see the [LICENSE](LICENSE) file.
