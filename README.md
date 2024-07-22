@@ -18,6 +18,12 @@ BridgeApi is a sophisticated library that facilitates seamless communication bet
 1. Add the BridgeApi dependency to your project:
 
 ```kotlin
+// add jitpack repo
+repositories {
+    mavenCentral()
+    maven("https://jitpack.io")
+}
+// add bridge-api lib
 implementation("io.github.shiniseong:bridge-api:1.1.6")
 ```
 
