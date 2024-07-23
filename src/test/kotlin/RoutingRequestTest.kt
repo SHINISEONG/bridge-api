@@ -133,5 +133,14 @@ class RoutingRequestTest : StringSpec({
                 {"status":0,"message":"success","data":{"id":1,"name":"Apple","price":100,"stock":20}}
             """.trimIndent()
         }
+
+        "POST: TimeMeasure - 100000회 요청 시간 측정 /:id/name/:name/user-type/:type/age/:age"{
+            val start = System.currentTimeMillis()
+            repeat(100000) {
+                router.routingRequest("api/v1/users/1/name/John/user-type/1/age/20", MethodType.POST)
+            }
+            val end = System.currentTimeMillis()
+            println("TimeMeasure: ${end - start}ms")
+        }
     }
 })

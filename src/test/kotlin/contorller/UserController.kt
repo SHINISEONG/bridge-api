@@ -93,4 +93,22 @@ class UserController {
         )
     )
 
+    @Post("/:id/name/:name/user-type/:type/age/:age")
+    fun getUserByTypeAndAge(
+        @PathVariable("id") id: Long,
+        @PathVariable("name") name: String,
+        @PathVariable("type") type: UserType,
+        @PathVariable("age") age: Int
+    ): ApiCommonResDto<UserResDto> = ApiCommonResDto(
+        status = 0,
+        message = "success",
+        data = UserResDto(
+            id = id,
+            name = name,
+            age = age,
+            type = type,
+        ),
+    )
+
+
 }
